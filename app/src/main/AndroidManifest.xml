@@ -4,6 +4,10 @@
 
     <!-- Bildschirmzeit (Nutzer erlaubt es einmal in den Einstellungen) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- Update-Hinweis (fragt GitHub nach der neuesten Version) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Wischgeste „Benachrichtigungen“ -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- „Deinstallieren“ im App-Menü -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
