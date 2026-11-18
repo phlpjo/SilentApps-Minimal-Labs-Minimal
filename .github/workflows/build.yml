@@ -70,10 +70,14 @@ jobs:
         run: |
           V="1.0.${{ github.run_number }}"
           cp app/build/outputs/apk/release/app-release.apk Minimal.apk
-          gh release create "v$V" Minimal.apk \
-            --title "Minimal $V" \
-            --notes "Auf dem Handy öffnen, Minimal.apk antippen und installieren. Neue Versionen installieren sich über die alte." \
-            --latest
+          {
+            echo "**Neu:** $(git log -1 --format=%s)"
+            echo
+            echo "**Installieren:** auf dem Handy \`Minimal.apk\` herunterladen und antippen. Neue Versionen installieren sich über die alte, Einstellungen bleiben erhalten."
+            echo
+            echo "Kein Tracking, keine Werbung – siehe [Datenschutz](https://github.com/${{ github.repository }}/blob/main/DATENSCHUTZ.md)."
+          } > notes.md
+          gh release create "v$V" Minimal.apk --title "Minimal $V" --notes-file notes.md --latest
 
       - name: Testbuild als Artefakt
         if: steps.key.outputs.signed != 'true'
