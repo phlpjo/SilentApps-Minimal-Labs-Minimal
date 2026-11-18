@@ -81,13 +81,13 @@ class Prefs(ctx: Context) {
 
     private fun list(name: String) = (sp.getString(name, "") ?: "").split('|').filter { it.isNotBlank() }
 
-    fun setFavorites(v: List<String>) { favorites = v; sp.edit().putString("favorites", v.joinToString("|")).apply() }
+    fun saveFavorites(v: List<String>) { favorites = v; sp.edit().putString("favorites", v.joinToString("|")).apply() }
     fun toggleFavorite(key: String) =
-        setFavorites(if (key in favorites) favorites - key else (favorites + key).take(MAX_FAVORITES))
+        saveFavorites(if (key in favorites) favorites - key else (favorites + key).take(MAX_FAVORITES))
     fun moveFavorite(key: String, by: Int) {
         val i = favorites.indexOf(key); val j = i + by
         if (i < 0 || j !in favorites.indices) return
-        setFavorites(favorites.toMutableList().apply { add(j, removeAt(i)) })
+        saveFavorites(favorites.toMutableList().apply { add(j, removeAt(i)) })
     }
 
     fun toggleDistracting(pkg: String) {
