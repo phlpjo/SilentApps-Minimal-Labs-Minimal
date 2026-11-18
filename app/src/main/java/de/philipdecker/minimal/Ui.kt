@@ -72,6 +72,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -409,9 +410,24 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
             decorationBox = { field ->
                 Column {
-                    Box {
-                        if (query.isEmpty()) T("Suchen", size = 26.sp, color = Faint, weight = FontWeight.Light)
-                        field()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            if (query.isEmpty()) T("Suchen", size = 26.sp, color = Faint, weight = FontWeight.Light)
+                            field()
+                        }
+                        // ✕: Suche leeren (Tastatur bleibt offen)
+                        if (query.isNotEmpty()) {
+                            Box(
+                                Modifier.size(40.dp).tap { query = ""; focus.requestFocus() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Canvas(Modifier.size(16.dp)) {
+                                    val w = 1.6.dp.toPx()
+                                    drawLine(Dim, Offset.Zero, Offset(size.width, size.height), w, StrokeCap.Round)
+                                    drawLine(Dim, Offset(size.width, 0f), Offset(0f, size.height), w, StrokeCap.Round)
+                                }
+                            }
+                        }
                     }
                     Spacer(Modifier.height(10.dp))
                     // Leuchtende Linie, die zur Seite ausläuft
