@@ -83,7 +83,7 @@ class Prefs(ctx: Context) {
         private set
     var showScreenTime by mutableStateOf(sp.getBoolean("showScreenTime", true))
         private set
-    var keyboardOnOpen by mutableStateOf(sp.getBoolean("keyboardOnOpen", true))
+    var keyboardOnOpen by mutableStateOf(sp.getBoolean("keyboardOnOpen", false))
         private set
     /** Wischgesten: unten/links/rechts (nach oben = alle Apps) */
     var swipeDown by mutableStateOf(sp.getString("swipeDown", "notif") ?: "notif")
@@ -96,9 +96,6 @@ class Prefs(ctx: Context) {
     var font by mutableStateOf(sp.getString("font", "space") ?: "space")
         private set
     var fontSize by mutableIntStateOf(sp.getInt("fontSize", 1))
-        private set
-    /** Sternenhimmel: "move" | "still" | "off" */
-    var stars by mutableStateOf(sp.getString("stars", "move") ?: "move")
         private set
 
     private fun list(name: String) = (sp.getString(name, "") ?: "").split('|').filter { it.isNotBlank() }
@@ -150,11 +147,6 @@ class Prefs(ctx: Context) {
         sp.edit().putString("font", font).apply()
     }
     fun cycleFontSize() { fontSize = (fontSize + 1) % 3; sp.edit().putInt("fontSize", fontSize).apply() }
-    fun cycleStars() {
-        val all = listOf("move", "still", "off")
-        stars = all[(all.indexOf(stars) + 1) % all.size]
-        sp.edit().putString("stars", stars).apply()
-    }
 
     fun toggleBattery() { showBattery = !showBattery; sp.edit().putBoolean("showBattery", showBattery).apply() }
     fun toggleScreenTime() { showScreenTime = !showScreenTime; sp.edit().putBoolean("showScreenTime", showScreenTime).apply() }

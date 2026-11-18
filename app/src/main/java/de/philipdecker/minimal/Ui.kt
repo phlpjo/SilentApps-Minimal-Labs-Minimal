@@ -17,10 +17,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -54,6 +58,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +77,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +92,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -111,7 +119,7 @@ sealed interface Screen {
     data class Pause(val app: AppEntry) : Screen
 }
 
-/** Text in der gewählten Schrift und Größe; glow = leichtes Leuchten (Uhr, Überschriften) */
+/** Text in der gewählten Schrift und Größe */
 @Composable
 fun T(
     text: String,
@@ -119,7 +127,6 @@ fun T(
     color: Color = Ink,
     weight: FontWeight = FontWeight.Normal,
     align: TextAlign = TextAlign.Start,
-    glow: Boolean = false,
     spacing: TextUnit = 0.2.sp,
     modifier: Modifier = Modifier,
 ) = BasicText(
@@ -127,7 +134,6 @@ fun T(
     style = TextStyle(
         color = color, fontSize = size * LocalScale.current, fontWeight = weight, textAlign = align,
         fontFamily = LocalFont.current, letterSpacing = spacing,
-        shadow = if (glow) Shadow(color.copy(alpha = 0.45f), Offset.Zero, 28f) else null,
     ),
 )
 
@@ -142,44 +148,6 @@ fun Modifier.tap(onLong: (() -> Unit)? = null, onClick: () -> Unit): Modifier = 
     )
 }
 
-/** Sanftes Einschweben (gestaffelt nach Index) */
-fun Modifier.floatIn(index: Int): Modifier = composed {
-    val a = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { delay(60L + index * 45L); a.animateTo(1f, tween(520, easing = FastOutSlowInEasing)) }
-    graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 28.dp.toPx(); scaleX = 0.96f + 0.04f * a.value; scaleY = scaleX }
-}
-
-/** Scrollen → Warp der Sterne */
-@Composable
-fun rememberWarpScroll(): NestedScrollConnection {
-    val warp = LocalWarp.current
-    return remember(warp) {
-        object : NestedScrollConnection {
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                warp.floatValue = (warp.floatValue - consumed.y * 0.5f).coerceIn(-90f, 90f)
-                return Offset.Zero
-            }
-        }
-    }
-}
-
-/** 3D-Liste: Einträge kippen am Rand nach hinten weg und verblassen (wie eine Walze im All) */
-fun Modifier.depth(state: LazyListState, key: Any): Modifier = graphicsLayer {
-    val info = state.layoutInfo
-    val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
-    val half = (info.viewportEndOffset - info.viewportStartOffset) / 2f
-    if (half <= 0f) return@graphicsLayer
-    val center = info.viewportStartOffset + half
-    val d = ((item.offset + item.size / 2f - center) / half).coerceIn(-1f, 1f)
-    alpha = (1f - 0.8f * d * d).coerceIn(0.08f, 1f)
-    val s = 1f - 0.1f * abs(d)
-    scaleX = s; scaleY = s
-    rotationX = -d * 34f
-    cameraDistance = 10f * density
-    transformOrigin = TransformOrigin(0f, 0.5f)
-    translationX = abs(d) * d * d * 18.dp.toPx()
-}
-
 // ───────────────────────── Startbildschirm ─────────────────────────
 
 @Composable
@@ -188,7 +156,6 @@ fun HomeScreen(
     onOpen: (AppEntry) -> Unit, onApps: () -> Unit, onSettings: () -> Unit, onSwipe: (SwipeAction) -> Unit,
 ) {
     val ctx = LocalContext.current
-    val warp = LocalWarp.current
     val now by produceState(LocalDateTime.now()) {
         while (true) {
             value = LocalDateTime.now()
@@ -220,10 +187,7 @@ fun HomeScreen(
                         }
                         drag = Offset.Zero
                     },
-                ) { _, d ->
-                    drag += d
-                    warp.floatValue = (warp.floatValue - d.y * 0.6f).coerceIn(-90f, 90f)
-                }
+                ) { _, d -> drag += d }
             }
             .pointerInput(Unit) { detectTapGestures(onLongPress = { onSettings() }) }
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -231,29 +195,29 @@ fun HomeScreen(
     ) {
         Column(Modifier.fillMaxSize()) {
             Spacer(Modifier.height(28.dp))
-            T(now.format(timeFmt), size = 84.sp, weight = FontWeight.Light, glow = true, spacing = (-2).sp,
-                modifier = Modifier.floatIn(0).tap { Shortcuts.alarms(ctx) })
+            T(now.format(timeFmt), size = 84.sp, weight = FontWeight.Light, spacing = (-2).sp,
+                modifier = Modifier.tap { Shortcuts.alarms(ctx) })
             T(now.format(dateFmt), size = 18.sp, color = Dim, spacing = 0.6.sp,
-                modifier = Modifier.floatIn(1).tap { Shortcuts.calendar(ctx) })
+                modifier = Modifier.tap { Shortcuts.calendar(ctx) })
             val info = listOfNotNull(
                 if (prefs.showBattery) battery?.let { "$it %" } else null,
                 screenTime?.let { "${duration(it)} heute" },
             )
             if (info.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                T(info.joinToString("   ·   "), size = 13.sp, color = Faint, spacing = 1.2.sp, modifier = Modifier.floatIn(2))
+                T(info.joinToString("   ·   "), size = 13.sp, color = Faint, spacing = 1.2.sp, modifier = Modifier)
             }
 
             Spacer(Modifier.weight(1f))
             if (favs.isEmpty()) {
-                T("Nach oben wischen für alle Apps.\nLange auf eine App drücken, um sie hier anzuheften.", size = 16.sp, color = Dim, modifier = Modifier.floatIn(3))
+                T("Nach oben wischen für alle Apps.\nLange auf eine App drücken, um sie hier anzuheften.", size = 16.sp, color = Dim, modifier = Modifier)
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     favs.forEachIndexed { i, app ->
                         T(
                             app.label, size = 32.sp, weight = FontWeight.Light,
                             color = if (app.pkg in prefs.distracting) Dim else Ink,
-                            modifier = Modifier.floatIn(3 + i).tap { onOpen(app) },
+                            modifier = Modifier.tap { onOpen(app) },
                         )
                     }
                 }
@@ -291,7 +255,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val list = rememberLazyListState()
-    val warpScroll = rememberWarpScroll()
+    val scope = rememberCoroutineScope()
     val q = fold(query.trim())
     val shown = remember(apps, q) {
         if (q.isEmpty()) apps
@@ -324,25 +288,32 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                         field()
                     }
                     Spacer(Modifier.height(10.dp))
-                    // Leuchtende Linie, die zur Seite ausläuft
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Ink.copy(alpha = 0.7f), Ink.copy(alpha = 0.08f), Color.Transparent))))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
                 }
             },
         )
         Spacer(Modifier.height(8.dp))
-        LazyColumn(
-            Modifier.weight(1f).nestedScroll(warpScroll),
-            state = list,
-            contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
-        ) {
-            items(shown, key = { it.key }) { app ->
-                T(
-                    app.label, size = 24.sp, weight = FontWeight.Light,
-                    color = if (app.pkg in prefs.distracting) Dim else Ink,
-                    modifier = Modifier.fillMaxWidth().depth(list, app.key).tap(onLong = { menu = app }) { onOpen(app) }.padding(vertical = 11.dp),
-                )
+        // Liste beginnt in der Bildschirmmitte (erster Eintrag = „A“); Sprung per Buchstabe landet ebenfalls dort
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val half = maxHeight / 2
+            val index = remember(shown) { letterIndex(shown) }
+            LazyColumn(
+                Modifier.fillMaxSize().padding(end = if (q.isEmpty()) 28.dp else 0.dp),
+                state = list,
+                contentPadding = PaddingValues(top = if (q.isEmpty()) half - 24.dp else 12.dp, bottom = half),
+            ) {
+                items(shown, key = { it.key }) { app ->
+                    T(
+                        app.label, size = 24.sp, weight = FontWeight.Light,
+                        color = if (app.pkg in prefs.distracting) Dim else Ink,
+                        modifier = Modifier.fillMaxWidth().tap(onLong = { menu = app }) { onOpen(app) }.padding(vertical = 11.dp),
+                    )
+                }
+                if (shown.isEmpty()) item { T("Keine App gefunden.", size = 16.sp, color = Dim, modifier = Modifier.padding(vertical = 10.dp)) }
             }
-            if (shown.isEmpty()) item { T("Keine App gefunden.", size = 16.sp, color = Dim, modifier = Modifier.padding(vertical = 10.dp)) }
+            if (q.isEmpty() && shown.isNotEmpty()) {
+                LetterBar(index, Modifier.align(Alignment.CenterEnd)) { i -> scope.launch { list.scrollToItem(i) } }
+            }
         }
     }
 
@@ -350,7 +321,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
         val fav = app.key in prefs.favorites
         val full = !fav && prefs.favorites.size >= Prefs.MAX_FAVORITES
         Sheet(onDismiss = { menu = null }) {
-            T(app.label, size = 24.sp, weight = FontWeight.Light, glow = true)
+            T(app.label, size = 24.sp, weight = FontWeight.Light)
             Spacer(Modifier.height(18.dp))
             Option(if (fav) "Vom Startbildschirm entfernen" else if (full) "Startbildschirm voll (${Prefs.MAX_FAVORITES})" else "Auf den Startbildschirm", enabled = !full) {
                 prefs.toggleFavorite(app.key); menu = null
@@ -398,9 +369,9 @@ fun Sheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .floatIn(0)
+                
                 .background(Panel, RoundedCornerShape(24.dp))
-                .border(1.dp, Brush.verticalGradient(listOf(Ink.copy(alpha = 0.28f), Ink.copy(alpha = 0.04f))), RoundedCornerShape(24.dp))
+                .border(1.dp, Line, RoundedCornerShape(24.dp))
                 .padding(26.dp),
         ) { content() }
     }
@@ -414,6 +385,70 @@ fun Option(text: String, color: Color = Ink, enabled: Boolean = true, onClick: (
     )
 }
 
+/** Anfangsbuchstabe für die Leiste: A–Z (Umlaute zählen zum Grundbuchstaben), alles andere „#“ */
+fun letterOf(label: String): Char {
+    val c = fold(label.trim()).firstOrNull()?.uppercaseChar() ?: '#'
+    return if (c in 'A'..'Z') c else '#'
+}
+
+/** Buchstabe → erster Index in der Liste. Fehlende Buchstaben springen zum nächsten vorhandenen. */
+fun letterIndex(apps: List<AppEntry>): List<Pair<Char, Int>> {
+    val first = HashMap<Char, Int>()
+    apps.forEachIndexed { i, a -> first.putIfAbsent(letterOf(a.label), i) }
+    val letters = ('A'..'Z').toList() + '#'
+    return letters.map { l ->
+        val i = first[l] ?: letters.drop(letters.indexOf(l)).firstNotNullOfOrNull { first[it] } ?: apps.lastIndex
+        l to i
+    }
+}
+
+/** Buchstabenleiste rechts: antippen oder darüberziehen; großer Buchstabe zeigt, wo man ist */
+@Composable
+fun LetterBar(index: List<Pair<Char, Int>>, modifier: Modifier = Modifier, onJump: (Int) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    var active by remember { mutableStateOf<Char?>(null) }
+    val present = remember(index) { index.zipWithNext { a, b -> if (a.second != b.second) a.first else null }.filterNotNull().toSet() + index.last().first }
+    Box(modifier.fillMaxHeight()) {
+        active?.let { l ->
+            T(l.toString(), size = 56.sp, weight = FontWeight.Light, modifier = Modifier.align(Alignment.Center).padding(end = 72.dp))
+        }
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight(0.86f)
+                .width(28.dp)
+                .pointerInput(index) {
+                    fun pick(y: Float) {
+                        val i = ((y / size.height) * index.size).toInt().coerceIn(0, index.lastIndex)
+                        val (l, at) = index[i]
+                        if (l != active) {
+                            active = l
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onJump(at)
+                        }
+                    }
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        down.consume(); pick(down.position.y)
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val c = ev.changes.firstOrNull() ?: break
+                            if (!c.pressed) break
+                            c.consume(); pick(c.position.y)
+                        }
+                        active = null
+                    }
+                },
+            verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            index.forEach { (l, _) ->
+                T(l.toString(), size = 11.sp, weight = FontWeight.Medium, color = if (l == active) Ink else if (l in present) Dim else Faint)
+            }
+        }
+    }
+}
+
 // ───────────────────────── Pause vor ablenkenden Apps ─────────────────────────
 
 @Composable
@@ -424,10 +459,9 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
     val used by produceState<Long?>(null, app) {
         value = if (Usage.granted(ctx)) withContext(Dispatchers.IO) { Usage.today(ctx)[app.pkg] ?: 0L } else null
     }
-    // Atmen: Ring wächst 4 s, schrumpft 4 s; ein Mond umkreist ihn
+    // Atmen: Ring wächst 4 s, schrumpft 4 s
     val t = rememberInfiniteTransition(label = "atem")
     val scale by t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(4000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "ring")
-    val orbit by t.animateFloat(0f, 1f, infiniteRepeatable(tween(8000, easing = LinearEasing)), label = "mond")
 
     Column(
         Modifier
@@ -437,9 +471,9 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
-        T(app.label, size = 30.sp, weight = FontWeight.Light, align = TextAlign.Center, glow = true, modifier = Modifier.floatIn(0))
+        T(app.label, size = 30.sp, weight = FontWeight.Light, align = TextAlign.Center, modifier = Modifier)
         Spacer(Modifier.height(8.dp))
-        T("Brauchst du das gerade wirklich?", size = 17.sp, color = Dim, align = TextAlign.Center, modifier = Modifier.floatIn(1))
+        T("Brauchst du das gerade wirklich?", size = 17.sp, color = Dim, align = TextAlign.Center, modifier = Modifier)
         used?.let {
             Spacer(Modifier.height(4.dp))
             T("Heute schon ${duration(it)}", size = 14.sp, color = Faint, align = TextAlign.Center, spacing = 1.sp)
@@ -447,12 +481,7 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
         Spacer(Modifier.height(48.dp))
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.size(220.dp)) {
-                val r = size.minDimension / 2f * scale * 0.92f
-                // weicher Schein
-                drawCircle(Brush.radialGradient(listOf(Ink.copy(alpha = 0.10f), Color.Transparent), center, r * 1.35f), r * 1.35f)
-                drawCircle(Ink.copy(alpha = 0.85f), r, style = Stroke(1.2.dp.toPx()))
-                val ang = orbit * 2f * PI.toFloat()
-                drawCircle(Ink, 3.5.dp.toPx(), Offset(center.x + cos(ang) * r, center.y + sin(ang) * r))
+                drawCircle(Ink.copy(alpha = 0.85f), size.minDimension / 2f * scale * 0.92f, style = Stroke(1.2.dp.toPx()))
             }
             T(if (left > 0) "$left" else "", size = 34.sp, weight = FontWeight.Light)
         }
@@ -479,11 +508,6 @@ fun SettingsScreen(
     val usage = remember(tick) { Usage.granted(ctx) }
     var picking by remember { mutableStateOf<String?>(null) }
     val scroll = rememberScrollState()
-    val warp = LocalWarp.current
-    LaunchedEffect(scroll) {
-        var last = scroll.value
-        androidx.compose.runtime.snapshotFlow { scroll.value }.collect { v -> warp.floatValue = (warp.floatValue - (v - last) * 0.5f).coerceIn(-90f, 90f); last = v }
-    }
     fun open(action: String) = try { ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
     fun swipeLabel(a: SwipeAction) = when {
         a == "notif" -> "Benachrichtigungen"
@@ -499,7 +523,7 @@ fun SettingsScreen(
             .verticalScroll(scroll)
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
-        T("Einstellungen", size = 32.sp, weight = FontWeight.Light, glow = true, modifier = Modifier.floatIn(0))
+        T("Einstellungen", size = 32.sp, weight = FontWeight.Light, modifier = Modifier)
         Spacer(Modifier.height(24.dp))
         Option("Als Standard-Startbildschirm festlegen") { open(Settings.ACTION_HOME_SETTINGS) }
 
@@ -543,7 +567,6 @@ fun SettingsScreen(
         Section("Aussehen")
         Toggle("Schrift", fontLabel(prefs.font)) { prefs.cycleFont() }
         Toggle("Schriftgröße", sizeLabel(prefs.fontSize)) { prefs.cycleFontSize() }
-        Toggle("Sternenhimmel", when (prefs.stars) { "still" -> "ruhig"; "off" -> "aus"; else -> "bewegt" }) { prefs.cycleStars() }
         Toggle("Akku anzeigen", if (prefs.showBattery) "an" else "aus") { prefs.toggleBattery() }
         Toggle("Bildschirmzeit anzeigen", if (prefs.showScreenTime) "an" else "aus") { prefs.toggleScreenTime() }
         if (!usage) Option("Nutzungszugriff erlauben (für Bildschirmzeit)", color = Dim) { open(Settings.ACTION_USAGE_ACCESS_SETTINGS) }
@@ -578,7 +601,7 @@ private fun AppPicker(apps: List<AppEntry>, onDismiss: () -> Unit, onPick: (Swip
         val list = rememberLazyListState()
         LazyColumn(Modifier.heightIn(max = 360.dp), state = list) {
             items(apps, key = { it.key }) { app ->
-                T(app.label, size = 18.sp, modifier = Modifier.fillMaxWidth().depth(list, app.key).tap { onPick("app:${app.key}") }.padding(vertical = 10.dp))
+                T(app.label, size = 18.sp, modifier = Modifier.fillMaxWidth().tap { onPick("app:${app.key}") }.padding(vertical = 10.dp))
             }
         }
     }
