@@ -228,7 +228,6 @@ fun HomeScreen(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var editFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
-    var lockSetup by remember { mutableStateOf(false) }
     var renameFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
 
     Box(
@@ -253,12 +252,7 @@ fun HomeScreen(
                     warp.floatValue = (warp.floatValue - d.y * 0.6f).coerceIn(-90f, 90f)
                 }
             }
-            .pointerInput(prefs.doubleTapLock) {
-                detectTapGestures(
-                    onLongPress = { onSettings() },
-                    onDoubleTap = if (prefs.doubleTapLock) { _ -> if (!LockService.lock()) lockSetup = true } else null,
-                )
-            }
+            .pointerInput(Unit) { detectTapGestures(onLongPress = { onSettings() }) }
             .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
@@ -318,24 +312,6 @@ fun HomeScreen(
             Option("Umbenennen") { renameFolder = f; editFolder = null }
             Option("Ordner auflösen") { prefs.deleteFolder(f.id); editFolder = null }
             Option("Abbrechen", color = Dim) { editFolder = null }
-        }
-    }
-    if (lockSetup) {
-        Sheet(onDismiss = { lockSetup = false }) {
-            T("Doppeltipp sperrt", size = 24.sp, weight = FontWeight.Light, glow = true)
-            Spacer(Modifier.height(10.dp))
-            T(
-                if (LockService.supported) "Dafür braucht Minimal einmal die Freigabe als Bedienungshilfe. Sie wird nur zum Sperren genutzt, es werden keine Inhalte gelesen.\n\nEinstellungen → Bedienungshilfen → „Minimal – Doppeltipp sperrt“ → an."
-                else "Das Sperren per Doppeltipp braucht Android 9 oder neuer.",
-                size = 15.sp, color = Dim,
-            )
-            Spacer(Modifier.height(14.dp))
-            if (LockService.supported) Option("Bedienungshilfen öffnen") {
-                lockSetup = false
-                try { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
-            }
-            Option("Doppeltipp ausschalten", color = Dim) { prefs.toggleDoubleTapLock(); lockSetup = false }
-            Option("Abbrechen", color = Dim) { lockSetup = false }
         }
     }
     renameFolder?.let { f ->
@@ -809,8 +785,6 @@ fun SettingsScreen(
         Section("Gesten")
         T("Nach oben wischen öffnet alle Apps. Uhrzeit antippen öffnet den Wecker, Datum den Kalender.", size = 14.sp, color = Faint)
         Spacer(Modifier.height(6.dp))
-        Toggle("Doppeltipp sperrt den Bildschirm", when { !prefs.doubleTapLock -> "aus"; LockService.enabled(ctx) -> "an"; else -> "an · Freigabe fehlt" }) { prefs.toggleDoubleTapLock() }
-        if (prefs.doubleTapLock && LockService.supported && !LockService.enabled(ctx)) Option("Freigabe in den Bedienungshilfen erteilen", color = Dim) { open(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
         Toggle("Nach unten wischen", swipeLabel(prefs.swipeDown)) { picking = "down" }
         Toggle("Nach links wischen", swipeLabel(prefs.swipeLeft)) { picking = "left" }
         Toggle("Nach rechts wischen", swipeLabel(prefs.swipeRight)) { picking = "right" }
