@@ -62,6 +62,9 @@ object Apps {
     }
 }
 
+/** Ordner: Name und enthaltene Apps (Schlüssel „paket/aktivität“) */
+data class Folder(val id: String, val name: String, val apps: List<String>)
+
 /** Was eine Wischgeste auf dem Startbildschirm tut: "" = nichts, "notif" = Benachrichtigungen, "app:<key>" = App öffnen */
 typealias SwipeAction = String
 
@@ -96,6 +99,15 @@ class Prefs(ctx: Context) {
     var font by mutableStateOf(sp.getString("font", "space") ?: "space")
         private set
     var fontSize by mutableIntStateOf(sp.getInt("fontSize", 1))
+        private set
+    /** Sternenhimmel: "move" | "still" | "off" */
+    var stars by mutableStateOf(sp.getString("stars", "move") ?: "move")
+        private set
+    /** Wie stark die Sterne beim Scrollen/Wischen mitziehen: 0 aus, 1 sehr langsam, 2 langsam, 3 normal */
+    var warpLevel by mutableIntStateOf(sp.getInt("warpLevel", 1))
+        private set
+    /** Ordner auf dem Startbildschirm (nur als Text); auf dem Startbildschirm stehen sie als "folder:<id>" */
+    var folders by mutableStateOf(readFolders())
         private set
 
     private fun list(name: String) = (sp.getString(name, "") ?: "").split('|').filter { it.isNotBlank() }
@@ -147,6 +159,47 @@ class Prefs(ctx: Context) {
         sp.edit().putString("font", font).apply()
     }
     fun cycleFontSize() { fontSize = (fontSize + 1) % 3; sp.edit().putInt("fontSize", fontSize).apply() }
+    fun cycleStars() {
+        val all = listOf("move", "still", "off")
+        stars = all[(all.indexOf(stars) + 1) % all.size]
+        sp.edit().putString("stars", stars).apply()
+    }
+    fun cycleWarp() { warpLevel = (warpLevel + 1) % 4; sp.edit().putInt("warpLevel", warpLevel).apply() }
+
+    // ── Ordner ──
+    private fun readFolders(): List<Folder> = try {
+        val a = org.json.JSONArray(sp.getString("folders", "[]") ?: "[]")
+        List(a.length()) { i ->
+            val o = a.getJSONObject(i)
+            val apps = o.getJSONArray("apps")
+            Folder(o.getString("id"), o.getString("name"), List(apps.length()) { apps.getString(it) })
+        }
+    } catch (_: Exception) { emptyList() }
+
+    private fun saveFolders(v: List<Folder>) {
+        folders = v
+        val a = org.json.JSONArray()
+        v.forEach { f -> a.put(org.json.JSONObject().put("id", f.id).put("name", f.name).put("apps", org.json.JSONArray(f.apps))) }
+        sp.edit().putString("folders", a.toString()).apply()
+    }
+
+    fun folder(id: String) = folders.firstOrNull { it.id == id }
+
+    /** Neuer Ordner – landet auf dem Startbildschirm, wenn dort Platz ist. Gibt die ID zurück. */
+    fun createFolder(name: String, firstApp: String? = null): String {
+        val id = System.currentTimeMillis().toString(36)
+        saveFolders(folders + Folder(id, name.trim().ifEmpty { "Ordner" }, listOfNotNull(firstApp)))
+        if (favorites.size < MAX_FAVORITES) saveFavorites(favorites + "folder:$id")
+        return id
+    }
+    fun renameFolder(id: String, name: String) =
+        saveFolders(folders.map { if (it.id == id) it.copy(name = name.trim().ifEmpty { it.name }) else it })
+    fun deleteFolder(id: String) {
+        saveFolders(folders.filter { it.id != id })
+        saveFavorites(favorites - "folder:$id")
+    }
+    fun toggleInFolder(id: String, appKey: String) =
+        saveFolders(folders.map { if (it.id == id) it.copy(apps = if (appKey in it.apps) it.apps - appKey else it.apps + appKey) else it })
 
     fun toggleBattery() { showBattery = !showBattery; sp.edit().putBoolean("showBattery", showBattery).apply() }
     fun toggleScreenTime() { showScreenTime = !showScreenTime; sp.edit().putBoolean("showScreenTime", showScreenTime).apply() }

@@ -9,7 +9,8 @@ Schlichter Android-Launcher in Schwarz-Weiß, angelehnt an „Minimalist Phone�
 - **Lange drücken** auf den Startbildschirm: Einstellungen
 - **Kurzwege:** Uhrzeit → Wecker, Datum → Kalender; Wischen nach unten/links/rechts frei belegbar (Benachrichtigungen oder App)
 - **App-Liste:** beginnt in der Bildschirmmitte, Buchstabenleiste rechts zum Springen
-- **Schrift:** Space Grotesk / System / Mono in drei Größen
+- **Ordner:** auf dem Startbildschirm nur als Name (z. B. „Nachrichten“ mit Telegram und WhatsApp); App lange drücken → „In Ordner legen“
+- **Aussehen:** Sternenhimmel (bewegt/ruhig/aus), Sterne ziehen beim Scrollen mit (aus/sehr langsam/langsam/normal), 3D-Liste, Übergänge; Schrift Space Grotesk / System / Mono in drei Größen
 - **Update-Hinweis**, sobald auf GitHub eine neuere Version liegt
 
 Schriften: Space Grotesk und JetBrains Mono, SIL Open Font License (siehe `licenses/`).

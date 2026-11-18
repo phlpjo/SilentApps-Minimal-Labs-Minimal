@@ -11,14 +11,18 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private val screen = mutableStateOf<Screen>(Screen.Home)
     private val apps = mutableStateOf<List<AppEntry>>(emptyList())
     private val tick = mutableIntStateOf(0)
+    private val warp = mutableFloatStateOf(0f)
     /** Neueste Build-Nummer auf GitHub, falls neuer als diese App */
     private val update = mutableStateOf<Int?>(null)
     private val checking = mutableStateOf(false)
@@ -83,12 +88,20 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(
                 LocalFont provides fontFor(prefs.font),
                 LocalScale provides sizeFactor(prefs.fontSize),
+                LocalWarp provides warp,
             ) {
                 Box(Modifier.fillMaxSize().background(Bg)) {
+                    Starfield(prefs.stars, warp, warpFactor(prefs.warpLevel))
                     AnimatedContent(
                         targetState = screen.value,
                         contentKey = { it::class },
-                        transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) },
+                        transitionSpec = {
+                            // Tiefer hinein (Home → Apps/Einstellungen/Pause): neues kommt aus der Nähe, altes fliegt nach vorn weg
+                            val deeper = depthOf(targetState) > depthOf(initialState)
+                            val enter = fadeIn(tween(320, 40)) + scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = if (deeper) 0.9f else 1.08f)
+                            val exit = fadeOut(tween(200)) + scaleOut(tween(360, easing = FastOutSlowInEasing), targetScale = if (deeper) 1.08f else 0.92f)
+                            enter togetherWith exit
+                        },
                         label = "screen",
                     ) { s ->
                         when (s) {
@@ -98,7 +111,9 @@ class MainActivity : ComponentActivity() {
                                 onApps = { screen.value = Screen.Apps },
                                 onSettings = { screen.value = Screen.Settings },
                                 onSwipe = ::swipe,
+                                onFolder = { screen.value = Screen.Folder(it) },
                             )
+                            is Screen.Folder -> FolderScreen(prefs, s.id, all, onOpen = ::open, onBack = { screen.value = Screen.Home })
                             Screen.Apps -> AppsScreen(prefs, visible, onOpen = ::open, onBack = { screen.value = Screen.Home })
                             Screen.Settings -> SettingsScreen(
                                 prefs, all, tick.intValue, update.value, checking.value,
@@ -116,6 +131,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun depthOf(s: Screen) = when (s) { Screen.Home -> 0; Screen.Apps, Screen.Settings, is Screen.Folder -> 1; is Screen.Pause -> 2 }
 
     /** Ablenkende Apps erst nach der Pause, alle anderen sofort */
     private fun open(app: AppEntry) {
