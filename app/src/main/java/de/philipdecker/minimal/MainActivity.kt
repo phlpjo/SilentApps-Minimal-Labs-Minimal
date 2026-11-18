@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 apps.value.map { a -> prefs.renames[a.key]?.let { a.copy(label = it) } ?: a }
                     .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
             }
-            val visible = remember(all, prefs.hidden) { all.filter { it.key !in prefs.hidden } }
+            val visible = remember(all, prefs.hidden, prefs.showHidden) { if (prefs.showHidden) all else all.filter { it.key !in prefs.hidden } }
 
             CompositionLocalProvider(
                 LocalFont provides fontFor(prefs.font),

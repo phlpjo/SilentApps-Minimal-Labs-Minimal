@@ -228,6 +228,7 @@ fun HomeScreen(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var editFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
+    var lockSetup by remember { mutableStateOf(false) }
     var renameFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
 
     Box(
@@ -252,7 +253,12 @@ fun HomeScreen(
                     warp.floatValue = (warp.floatValue - d.y * 0.6f).coerceIn(-90f, 90f)
                 }
             }
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onSettings() }) }
+            .pointerInput(prefs.doubleTapLock) {
+                detectTapGestures(
+                    onLongPress = { onSettings() },
+                    onDoubleTap = if (prefs.doubleTapLock) { _ -> if (!LockService.lock()) lockSetup = true } else null,
+                )
+            }
             .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
@@ -312,6 +318,24 @@ fun HomeScreen(
             Option("Umbenennen") { renameFolder = f; editFolder = null }
             Option("Ordner auflösen") { prefs.deleteFolder(f.id); editFolder = null }
             Option("Abbrechen", color = Dim) { editFolder = null }
+        }
+    }
+    if (lockSetup) {
+        Sheet(onDismiss = { lockSetup = false }) {
+            T("Doppeltipp sperrt", size = 24.sp, weight = FontWeight.Light, glow = true)
+            Spacer(Modifier.height(10.dp))
+            T(
+                if (LockService.supported) "Dafür braucht Minimal einmal die Freigabe als Bedienungshilfe. Sie wird nur zum Sperren genutzt, es werden keine Inhalte gelesen.\n\nEinstellungen → Bedienungshilfen → „Minimal – Doppeltipp sperrt“ → an."
+                else "Das Sperren per Doppeltipp braucht Android 9 oder neuer.",
+                size = 15.sp, color = Dim,
+            )
+            Spacer(Modifier.height(14.dp))
+            if (LockService.supported) Option("Bedienungshilfen öffnen") {
+                lockSetup = false
+                try { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+            }
+            Option("Doppeltipp ausschalten", color = Dim) { prefs.toggleDoubleTapLock(); lockSetup = false }
+            Option("Abbrechen", color = Dim) { lockSetup = false }
         }
     }
     renameFolder?.let { f ->
@@ -430,7 +454,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                 items(shown, key = { it.key }) { app ->
                     T(
                         app.label, size = 24.sp, weight = FontWeight.Light,
-                        color = if (app.pkg in prefs.distracting) Dim else Ink,
+                        color = if (app.key in prefs.hidden) Faint else if (app.pkg in prefs.distracting) Dim else Ink,
                         modifier = Modifier.fillMaxWidth().depth(list, app.key).tap(onLong = { menu = app }) { onOpen(app) }.padding(vertical = 11.dp),
                     )
                 }
@@ -453,7 +477,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
             }
             Option("Umbenennen") { renaming = app; menu = null }
             Option("In Ordner legen") { folderPick = app; menu = null }
-            Option("Ausblenden") { prefs.toggleHidden(app.key); menu = null }
+            Option(if (app.key in prefs.hidden) "Einblenden" else "Ausblenden") { prefs.toggleHidden(app.key); menu = null }
             Option(if (app.pkg in prefs.distracting) "Nicht mehr ablenkend" else "Als ablenkend markieren") {
                 prefs.toggleDistracting(app.pkg); menu = null
             }
@@ -581,6 +605,9 @@ fun FolderScreen(prefs: Prefs, id: String, all: List<AppEntry>, onOpen: (AppEntr
         Sheet(onDismiss = { remove = null }) {
             T(app.label, size = 24.sp, weight = FontWeight.Light, glow = true)
             Spacer(Modifier.height(14.dp))
+            val pos = folder.apps.indexOf(app.key)
+            Option("Nach oben", enabled = pos > 0) { prefs.moveInFolder(folder.id, app.key, -1); remove = null }
+            Option("Nach unten", enabled = pos in 0 until folder.apps.lastIndex) { prefs.moveInFolder(folder.id, app.key, 1); remove = null }
             Option("Aus „${folder.name}“ entfernen") { prefs.toggleInFolder(folder.id, app.key); remove = null }
             Option("Abbrechen", color = Dim) { remove = null }
         }
@@ -782,6 +809,8 @@ fun SettingsScreen(
         Section("Gesten")
         T("Nach oben wischen öffnet alle Apps. Uhrzeit antippen öffnet den Wecker, Datum den Kalender.", size = 14.sp, color = Faint)
         Spacer(Modifier.height(6.dp))
+        Toggle("Doppeltipp sperrt den Bildschirm", when { !prefs.doubleTapLock -> "aus"; LockService.enabled(ctx) -> "an"; else -> "an · Freigabe fehlt" }) { prefs.toggleDoubleTapLock() }
+        if (prefs.doubleTapLock && LockService.supported && !LockService.enabled(ctx)) Option("Freigabe in den Bedienungshilfen erteilen", color = Dim) { open(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
         Toggle("Nach unten wischen", swipeLabel(prefs.swipeDown)) { picking = "down" }
         Toggle("Nach links wischen", swipeLabel(prefs.swipeLeft)) { picking = "left" }
         Toggle("Nach rechts wischen", swipeLabel(prefs.swipeRight)) { picking = "right" }
@@ -797,6 +826,7 @@ fun SettingsScreen(
         }
 
         Section("Ausgeblendete Apps")
+        Toggle("In der App-Liste anzeigen", if (prefs.showHidden) "an (abgedunkelt)" else "aus") { prefs.toggleShowHidden() }
         if (prefs.hidden.isEmpty()) T("Keine. In der App-Liste lange auf eine App drücken → „Ausblenden“.", size = 15.sp, color = Dim)
         prefs.hidden.sortedBy { (byKey[it]?.label ?: it).lowercase() }.forEach { key ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
