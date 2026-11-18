@@ -63,6 +63,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -337,6 +343,38 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
     val list = rememberLazyListState()
     val warpScroll = rememberWarpScroll()
     val scope = rememberCoroutineScope()
+    // Am Anfang der Liste weiter nach unten ziehen → Liste schließt (zurück zum Startbildschirm)
+    val haptic = LocalHapticFeedback.current
+    val closeAt = with(LocalDensity.current) { 120.dp.toPx() }
+    var pull by remember { mutableFloatStateOf(0f) }
+    val pullClose = remember(warpScroll, closeAt) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Zurückschieben, solange schon gezogen wurde
+                if (pull > 0f && available.y < 0f) {
+                    val c = maxOf(available.y, -pull); pull += c
+                    return Offset(0f, c)
+                }
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                warpScroll.onPostScroll(consumed, available, source)
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    val before = pull
+                    pull += available.y * 0.55f
+                    if (before < closeAt && pull >= closeAt) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (pull <= 0f) return Velocity.Zero
+                if (pull >= closeAt) onBack()
+                else animate(pull, 0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { v, _ -> pull = v }
+                return available
+            }
+        }
+    }
     val q = fold(query.trim())
     val shown = remember(apps, q) {
         if (q.isEmpty()) apps
@@ -376,11 +414,16 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
         )
         Spacer(Modifier.height(8.dp))
         // Liste beginnt in der Bildschirmmitte (erster Eintrag = „A“); Sprung per Buchstabe landet ebenfalls dort
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+        BoxWithConstraints(
+            Modifier.weight(1f).fillMaxWidth().graphicsLayer {
+                translationY = pull * 0.7f
+                alpha = 1f - (pull / closeAt).coerceIn(0f, 1f) * 0.55f
+            },
+        ) {
             val half = maxHeight / 2
             val index = remember(shown) { letterIndex(shown) }
             LazyColumn(
-                Modifier.fillMaxSize().padding(end = if (q.isEmpty()) 28.dp else 0.dp).nestedScroll(warpScroll),
+                Modifier.fillMaxSize().padding(end = if (q.isEmpty()) 28.dp else 0.dp).nestedScroll(pullClose),
                 state = list,
                 contentPadding = PaddingValues(top = if (q.isEmpty()) half - 24.dp else 12.dp, bottom = half),
             ) {
