@@ -80,6 +80,11 @@ class Prefs(ctx: Context) {
         private set
     var renames by mutableStateOf(readMap("renames"))
         private set
+    /** Symbol je App („paket/aktivität“) oder Ordner („folder:<id>“) */
+    var icons by mutableStateOf(readMap("icons"))
+        private set
+    var showIcons by mutableStateOf(sp.getBoolean("showIcons", true))
+        private set
     var pauseSeconds by mutableIntStateOf(sp.getInt("pauseSeconds", 10))
         private set
     var showBattery by mutableStateOf(sp.getBoolean("showBattery", true))
@@ -144,6 +149,13 @@ class Prefs(ctx: Context) {
         renames = if (n.isEmpty()) renames - key else renames + (key to n)
         sp.edit().putString("renames", org.json.JSONObject(renames).toString()).apply()
     }
+
+    fun setIcon(key: String, name: String?) {
+        icons = if (name == null) icons - key else icons + (key to name)
+        sp.edit().putString("icons", org.json.JSONObject(icons).toString()).apply()
+    }
+    fun iconFor(key: String): String? = if (showIcons) icons[key] else null
+    fun toggleShowIcons() { showIcons = !showIcons; sp.edit().putBoolean("showIcons", showIcons).apply() }
 
     fun cyclePause() {
         val steps = listOf(5, 10, 20, 30)

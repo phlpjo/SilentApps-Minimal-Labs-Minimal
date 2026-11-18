@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +70,8 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -229,6 +232,7 @@ fun HomeScreen(
     var drag by remember { mutableStateOf(Offset.Zero) }
     var editFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
     var renameFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
+    var folderIcon by remember { mutableStateOf<String?>(null) }
 
     Box(
         Modifier
@@ -278,14 +282,14 @@ fun HomeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     favs.forEachIndexed { i, item ->
                         when (item) {
-                            is HomeItem.App -> T(
-                                item.app.label, size = 32.sp, weight = FontWeight.Light,
+                            is HomeItem.App -> Labeled(
+                                item.app.label, prefs.iconFor(item.app.key), size = 32.sp, weight = FontWeight.Light,
                                 color = if (item.app.pkg in prefs.distracting) Dim else Ink,
                                 modifier = Modifier.floatIn(3 + i).tap { onOpen(item.app) },
                             )
                             // Ordner: nur der Name als Text
-                            is HomeItem.Dir -> T(
-                                item.folder.name, size = 32.sp, weight = FontWeight.Light,
+                            is HomeItem.Dir -> Labeled(
+                                item.folder.name, prefs.iconFor("folder:${item.folder.id}"), size = 32.sp, weight = FontWeight.Light,
                                 modifier = Modifier.floatIn(3 + i).tap(onLong = { editFolder = item.folder }) { onFolder(item.folder.id) },
                             )
                         }
@@ -310,10 +314,12 @@ fun HomeScreen(
             Spacer(Modifier.height(14.dp))
             Option("Öffnen") { editFolder = null; onFolder(f.id) }
             Option("Umbenennen") { renameFolder = f; editFolder = null }
+            Option(if ("folder:${f.id}" in prefs.icons) "Symbol ändern" else "Symbol wählen") { folderIcon = f.id; editFolder = null }
             Option("Ordner auflösen") { prefs.deleteFolder(f.id); editFolder = null }
             Option("Abbrechen", color = Dim) { editFolder = null }
         }
     }
+    folderIcon?.let { id -> IconPicker(prefs, "folder:$id") { folderIcon = null } }
     renameFolder?.let { f ->
         NameSheet("Ordner umbenennen", f.name, onCancel = { renameFolder = null }) { prefs.renameFolder(f.id, it); renameFolder = null }
     }
@@ -338,6 +344,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
     var menu by remember { mutableStateOf<AppEntry?>(null) }
     var renaming by remember { mutableStateOf<AppEntry?>(null) }
     var folderPick by remember { mutableStateOf<AppEntry?>(null) }
+    var iconFor by remember { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val list = rememberLazyListState()
@@ -428,8 +435,8 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                 contentPadding = PaddingValues(top = if (q.isEmpty()) half - 24.dp else 12.dp, bottom = half),
             ) {
                 items(shown, key = { it.key }) { app ->
-                    T(
-                        app.label, size = 24.sp, weight = FontWeight.Light,
+                    Labeled(
+                        app.label, prefs.iconFor(app.key), size = 24.sp, weight = FontWeight.Light,
                         color = if (app.key in prefs.hidden) Faint else if (app.pkg in prefs.distracting) Dim else Ink,
                         modifier = Modifier.fillMaxWidth().depth(list, app.key).tap(onLong = { menu = app }) { onOpen(app) }.padding(vertical = 11.dp),
                     )
@@ -452,6 +459,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                 prefs.toggleFavorite(app.key); menu = null
             }
             Option("Umbenennen") { renaming = app; menu = null }
+            Option(if (app.key in prefs.icons) "Symbol ändern" else "Symbol wählen") { iconFor = app.key; menu = null }
             Option("In Ordner legen") { folderPick = app; menu = null }
             Option(if (app.key in prefs.hidden) "Einblenden" else "Ausblenden") { prefs.toggleHidden(app.key); menu = null }
             Option(if (app.pkg in prefs.distracting) "Nicht mehr ablenkend" else "Als ablenkend markieren") {
@@ -464,6 +472,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
     }
     renaming?.let { app -> RenameSheet(prefs, app) { renaming = null } }
     folderPick?.let { app -> FolderPickSheet(prefs, app) { folderPick = null } }
+    iconFor?.let { key -> IconPicker(prefs, key) { iconFor = null } }
 }
 
 @Composable
@@ -486,6 +495,33 @@ fun RenameSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
         Spacer(Modifier.height(14.dp))
         Option("Speichern") { prefs.rename(app.key, name); onDone() }
         if (app.key in prefs.renames) Option("Originalnamen verwenden", color = Dim) { prefs.rename(app.key, ""); onDone() }
+        Option("Abbrechen", color = Dim) { onDone() }
+    }
+}
+
+/** Symbol auswählen: Raster aller weißen Linien-Symbole */
+@Composable
+fun IconPicker(prefs: Prefs, key: String, onDone: () -> Unit) {
+    val current = prefs.icons[key]
+    Sheet(onDismiss = onDone) {
+        T("Symbol wählen", size = 13.sp, color = Faint, spacing = 2.sp)
+        Spacer(Modifier.height(14.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(52.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
+        ) {
+            gridItems(Glyphs.names, key = { it }) { name ->
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .then(if (name == current) Modifier.border(1.dp, Ink.copy(alpha = 0.6f), RoundedCornerShape(14.dp)) else Modifier)
+                        .tap { prefs.setIcon(key, name); onDone() },
+                    contentAlignment = Alignment.Center,
+                ) { Glyph(name, 24.dp, if (name == current) Ink else Ink.copy(alpha = 0.82f)) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        if (current != null) Option("Kein Symbol", color = Dim) { prefs.setIcon(key, null); onDone() }
         Option("Abbrechen", color = Dim) { onDone() }
     }
 }
@@ -565,8 +601,8 @@ fun FolderScreen(prefs: Prefs, id: String, all: List<AppEntry>, onOpen: (AppEntr
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 apps.forEachIndexed { i, app ->
-                    T(
-                        app.label, size = 32.sp, weight = FontWeight.Light,
+                    Labeled(
+                        app.label, prefs.iconFor(app.key), size = 32.sp, weight = FontWeight.Light,
                         color = if (app.pkg in prefs.distracting) Dim else Ink,
                         modifier = Modifier.floatIn(1 + i).tap(onLong = { remove = app }) { onOpen(app) },
                     )
@@ -814,6 +850,7 @@ fun SettingsScreen(
         Toggle("Schriftgröße", sizeLabel(prefs.fontSize)) { prefs.cycleFontSize() }
         Toggle("Sternenhimmel", when (prefs.stars) { "still" -> "ruhig"; "off" -> "aus"; else -> "bewegt" }) { prefs.cycleStars() }
         Toggle("Sterne beim Scrollen", warpLabel(prefs.warpLevel)) { prefs.cycleWarp() }
+        Toggle("Symbole vor Namen", if (prefs.showIcons) "an" else "aus") { prefs.toggleShowIcons() }
         Toggle("Akku anzeigen", if (prefs.showBattery) "an" else "aus") { prefs.toggleBattery() }
         Toggle("Bildschirmzeit anzeigen", if (prefs.showScreenTime) "an" else "aus") { prefs.toggleScreenTime() }
         if (!usage) Option("Nutzungszugriff erlauben (für Bildschirmzeit)", color = Dim) { open(Settings.ACTION_USAGE_ACCESS_SETTINGS) }
