@@ -317,7 +317,7 @@ object Shortcuts {
 
 /** Neue Version auf GitHub? Gibt die Build-Nummer der neuesten Version zurück (oder null) */
 object Updates {
-    const val REPO = "phlpjo/Minimalist-Phone-APK"
+    const val REPO = "phlpjo/Minimal"
     const val DOWNLOAD = "https://github.com/$REPO/releases/latest/download/Minimal.apk"
 
     fun latestBuild(): Int? = try {

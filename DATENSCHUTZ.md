@@ -18,7 +18,7 @@ Minimal hat genau **eine** Verbindung nach außen:
 
 | Wohin | Wann | Was wird übertragen |
 |---|---|---|
-| `api.github.com` (Repository `phlpjo/Minimalist-Phone-APK`, Release „latest“) | beim Öffnen, höchstens alle 6 Stunden, oder wenn du in den Einstellungen „prüfen“ antippst | eine normale HTTPS-Anfrage: deine IP-Adresse und die Kennung `Minimal-Launcher` – keine Geräte-ID, keine Einstellungen, keine Nutzungsdaten |
+| `api.github.com` (Repository `phlpjo/Minimal`, Release „latest“) | beim Öffnen, höchstens alle 6 Stunden, oder wenn du in den Einstellungen „prüfen“ antippst | eine normale HTTPS-Anfrage: deine IP-Adresse und die Kennung `Minimal-Launcher` – keine Geräte-ID, keine Einstellungen, keine Nutzungsdaten |
 
 Für diese Anfrage gelten die [Datenschutzhinweise von GitHub](https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement). Wenn du die APK über den Link herunterlädst, öffnet sich dafür dein Browser.
 

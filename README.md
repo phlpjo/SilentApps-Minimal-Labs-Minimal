@@ -16,8 +16,13 @@ Keine bunten Icons, keine roten Zähler, kein Feed – nur Uhrzeit, deine wichti
 Die Idee kennt man von minimalistischen Launchern wie *Minimalist Phone*. Minimal ist die **datenschutzfreundliche, quelloffene und kostenlose** Variante davon: kein Konto, kein Abo, keine Werbung, kein Tracking – und jede Zeile Code ist hier nachlesbar.
 
 <p align="center">
-  <img src="docs/screens.svg" alt="Startbildschirm, App-Liste und Pause-Bildschirm (Illustration)" width="100%">
+  <img src="docs/home.png" alt="Startbildschirm mit Uhrzeit und Apps als Text mit Symbolen" width="31%">
+  &nbsp;
+  <img src="docs/ordner.png" alt="Geöffneter Ordner „Musik“" width="31%">
+  &nbsp;
+  <img src="docs/einstellungen.png" alt="Einstellungen" width="31%">
 </p>
+<p align="center"><sub>Startbildschirm · Ordner · Einstellungen</sub></p>
 
 ## Was Minimal kann
 
