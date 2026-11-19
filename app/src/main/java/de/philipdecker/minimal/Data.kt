@@ -96,6 +96,9 @@ class Prefs(ctx: Context) {
     /** Ausgeblendete Apps trotzdem in der App-Liste zeigen (abgedunkelt) */
     var showHidden by mutableStateOf(sp.getBoolean("showHidden", false))
         private set
+    /** Doppeltipp auf den Startbildschirm sperrt das Handy */
+    var doubleTapLock by mutableStateOf(sp.getBoolean("doubleTapLock", true))
+        private set
     /** Wischgesten: unten/links/rechts (nach oben = alle Apps) */
     var swipeDown by mutableStateOf(sp.getString("swipeDown", "notif") ?: "notif")
         private set
@@ -224,6 +227,7 @@ class Prefs(ctx: Context) {
     fun toggleBattery() { showBattery = !showBattery; sp.edit().putBoolean("showBattery", showBattery).apply() }
     fun toggleScreenTime() { showScreenTime = !showScreenTime; sp.edit().putBoolean("showScreenTime", showScreenTime).apply() }
     fun toggleShowHidden() { showHidden = !showHidden; sp.edit().putBoolean("showHidden", showHidden).apply() }
+    fun toggleDoubleTapLock() { doubleTapLock = !doubleTapLock; sp.edit().putBoolean("doubleTapLock", doubleTapLock).apply() }
     fun toggleKeyboard() { keyboardOnOpen = !keyboardOnOpen; sp.edit().putBoolean("keyboardOnOpen", keyboardOnOpen).apply() }
 
     /** Zuletzt auf GitHub gesehene Build-Nummer (Hinweis bleibt nach Neustart erhalten) */
