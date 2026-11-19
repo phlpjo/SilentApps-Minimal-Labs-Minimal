@@ -114,10 +114,10 @@ import kotlin.math.sin
 
 val Bg = Color.Black
 val Ink = Color.White
-val Dim = Color(0xFF8E8E98)
-val Faint = Color(0xFF4C4C56)
+val Dim = Color(0xFFADADB6)
+val Faint = Color(0xFF7A7A85)
 val Panel = Color(0xFF0B0B10)
-val Line = Color(0x26FFFFFF)
+val Line = Color(0x38FFFFFF)
 
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN)
 private val dateFmt = DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)
