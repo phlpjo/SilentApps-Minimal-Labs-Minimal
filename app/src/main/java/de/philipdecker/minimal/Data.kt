@@ -231,13 +231,6 @@ class Prefs(ctx: Context) {
     fun toggleKeyboard() { keyboardOnOpen = !keyboardOnOpen; sp.edit().putBoolean("keyboardOnOpen", keyboardOnOpen).apply() }
 
     /** Zuletzt auf GitHub gesehene Build-Nummer (Hinweis bleibt nach Neustart erhalten) */
-    var latestKnown: Int
-        get() = sp.getInt("latestKnown", 0)
-        set(v) { sp.edit().putInt("latestKnown", v).apply() }
-
-    var lastUpdateCheck: Long
-        get() = sp.getLong("lastUpdateCheck", 0L)
-        set(v) { sp.edit().putLong("lastUpdateCheck", v).apply() }
 
     companion object { const val MAX_FAVORITES = 8 }
 }
@@ -332,23 +325,8 @@ object Shortcuts {
     } catch (_: Exception) { false }
 }
 
-/** Neue Version auf GitHub? Gibt die Build-Nummer der neuesten Version zurück (oder null) */
-object Updates {
-    const val REPO = "phlpjo/Minimal"
-    const val DOWNLOAD = "https://github.com/$REPO/releases/latest/download/Minimal.apk"
-
-    fun latestBuild(): Int? = try {
-        val c = java.net.URL("https://api.github.com/repos/$REPO/releases/latest").openConnection() as java.net.HttpURLConnection
-        c.connectTimeout = 8000; c.readTimeout = 8000
-        c.setRequestProperty("Accept", "application/vnd.github+json")
-        c.setRequestProperty("User-Agent", "Minimal-Launcher")
-        val body = c.inputStream.bufferedReader().use { it.readText() }
-        c.disconnect()
-        org.json.JSONObject(body).getString("tag_name").substringAfterLast('.').toIntOrNull()
-    } catch (_: Exception) { null }
-
-    fun currentBuild(ctx: Context): Int = try {
+/** Build-Nummer dieser App (für die Versionsanzeige) */
+fun currentBuild(ctx: Context): Int = try {
         val pi = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
         if (Build.VERSION.SDK_INT >= 28) pi.longVersionCode.toInt() else @Suppress("DEPRECATION") pi.versionCode
     } catch (_: Exception) { 0 }
-}

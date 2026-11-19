@@ -62,8 +62,7 @@ Die Idee kennt man von minimalistischen Launchern wie *Minimalist Phone*. Minima
 Minimal sammelt **nichts**. Keine Analyse-Werkzeuge, keine Werbe-IDs, keine Absturzberichte an Dritte, kein Konto.
 
 - Alle Einstellungen und die Bildschirmzeit bleiben **auf deinem Handy**.
-- Die **einzige** Internetverbindung: höchstens alle 6 Stunden eine Anfrage an die GitHub-API, ob es eine neuere Version gibt. Dabei sieht GitHub deine IP-Adresse – sonst nichts.
-- Der komplette Quellcode liegt in diesem Repository; jede APK wird öffentlich nachvollziehbar von GitHub Actions gebaut.
+- **Kein Internetzugriff**: Die App hat keine Internet-Berechtigung.
 
 Alle Details und jede Berechtigung erklärt: **[DATENSCHUTZ.md](DATENSCHUTZ.md)**
 
@@ -90,7 +89,7 @@ Jeder Push auf `main` baut per GitHub Actions eine signierte APK und veröffentl
 
 ```
 app/src/main/java/de/philipdecker/minimal/
-├─ MainActivity.kt   Navigation, Übergänge, Update-Prüfung
+├─ MainActivity.kt   Navigation, Übergänge
 ├─ Ui.kt             Startbildschirm, App-Liste, Ordner, Pause, Einstellungen
 ├─ Data.kt           Apps, Einstellungen, Bildschirmzeit, Kurzwege
 ├─ Space.kt          Schriften, Sternenhimmel

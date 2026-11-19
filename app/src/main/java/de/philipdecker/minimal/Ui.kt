@@ -209,7 +209,7 @@ fun Modifier.depth(state: LazyListState, key: Any): Modifier = graphicsLayer {
 
 @Composable
 fun HomeScreen(
-    prefs: Prefs, apps: List<AppEntry>, tick: Int, update: Int?,
+    prefs: Prefs, apps: List<AppEntry>, tick: Int,
     onOpen: (AppEntry) -> Unit, onApps: () -> Unit, onSettings: () -> Unit, onSwipe: (SwipeAction) -> Unit,
     onFolder: (String) -> Unit,
 ) {
@@ -304,12 +304,6 @@ fun HomeScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
-            if (update != null) {
-                T("Neue Version 1.0.$update  ·  laden", size = 14.sp, color = Ink, spacing = 0.8.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally).tap {
-                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Updates.DOWNLOAD)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
-                    }.padding(8.dp))
-            }
             SwipeHint(Modifier.align(Alignment.CenterHorizontally).tap { onApps() })
         }
     }
@@ -808,8 +802,8 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
 
 @Composable
 fun SettingsScreen(
-    prefs: Prefs, all: List<AppEntry>, tick: Int, update: Int?, checking: Boolean,
-    onCheckUpdate: () -> Unit, onBack: () -> Unit,
+    prefs: Prefs, all: List<AppEntry>, tick: Int,
+    onBack: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val byKey = remember(all) { all.associateBy { it.key } }
@@ -829,7 +823,7 @@ fun SettingsScreen(
         a.startsWith("app:") -> byKey[a.removePrefix("app:")]?.label ?: "App fehlt"
         else -> "nichts"
     }
-    val current = remember { Updates.currentBuild(ctx) }
+    val current = remember { currentBuild(ctx) }
 
     Column(
         Modifier
@@ -899,14 +893,7 @@ fun SettingsScreen(
         Toggle("Tastatur in der App-Liste sofort", if (prefs.keyboardOnOpen) "an" else "aus") { prefs.toggleKeyboard() }
 
         Section("Version")
-        Toggle(
-            "Minimal 1.0.$current",
-            when { checking -> "suche …"; update != null -> "1.0.$update laden"; else -> "aktuell · prüfen" },
-        ) {
-            if (update != null) {
-                try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Updates.DOWNLOAD)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
-            } else onCheckUpdate()
-        }
+        Toggle("Minimal", "1.0.$current") { }
 
         Spacer(Modifier.height(24.dp))
         T("Zurück", size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))

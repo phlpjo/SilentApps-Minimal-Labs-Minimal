@@ -39,9 +39,6 @@ class MainActivity : ComponentActivity() {
     private val apps = mutableStateOf<List<AppEntry>>(emptyList())
     private val tick = mutableIntStateOf(0)
     private val warp = mutableFloatStateOf(0f)
-    /** Neueste Build-Nummer auf GitHub, falls neuer als diese App */
-    private val update = mutableStateOf<Int?>(null)
-    private val checking = mutableStateOf(false)
     private val scope = MainScope()
     private lateinit var prefs: Prefs
 
@@ -57,7 +54,6 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        prefs.latestKnown.takeIf { it > Updates.currentBuild(this) }?.let { update.value = it }
         reload()
 
         ContextCompat.registerReceiver(
@@ -106,7 +102,7 @@ class MainActivity : ComponentActivity() {
                     ) { s ->
                         when (s) {
                             Screen.Home -> HomeScreen(
-                                prefs, all, tick.intValue, update.value,
+                                prefs, all, tick.intValue,
                                 onOpen = ::open,
                                 onApps = { screen.value = Screen.Apps },
                                 onSettings = { screen.value = Screen.Settings },
@@ -116,8 +112,7 @@ class MainActivity : ComponentActivity() {
                             is Screen.Folder -> FolderScreen(prefs, s.id, all, onOpen = ::open, onBack = { screen.value = Screen.Home })
                             Screen.Apps -> AppsScreen(prefs, visible, onOpen = ::open, onBack = { screen.value = Screen.Home })
                             Screen.Settings -> SettingsScreen(
-                                prefs, all, tick.intValue, update.value, checking.value,
-                                onCheckUpdate = { checkUpdate(force = true) },
+                                prefs, all, tick.intValue,
                                 onBack = { screen.value = Screen.Home },
                             )
                             is Screen.Pause -> PauseScreen(
@@ -158,23 +153,6 @@ class MainActivity : ComponentActivity() {
         scope.launch { apps.value = withContext(Dispatchers.IO) { Apps.load(this@MainActivity) } }
     }
 
-    /** Höchstens alle 6 Stunden bei GitHub nach einer neuen Version fragen (oder sofort, wenn gewünscht) */
-    private fun checkUpdate(force: Boolean = false) {
-        val now = System.currentTimeMillis()
-        if (checking.value || (!force && now - prefs.lastUpdateCheck < 6 * 3600_000L)) return
-        checking.value = true
-        scope.launch {
-            val latest = withContext(Dispatchers.IO) { Updates.latestBuild() }
-            val current = Updates.currentBuild(this@MainActivity)
-            if (latest != null) {
-                prefs.lastUpdateCheck = now
-                prefs.latestKnown = latest
-                update.value = latest.takeIf { it > current }
-            }
-            checking.value = false
-        }
-    }
-
     // Home-Taste, während der Launcher offen ist → zurück zum Startbildschirm
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -184,7 +162,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         tick.intValue++
-        checkUpdate()
     }
 
     override fun onStop() {
