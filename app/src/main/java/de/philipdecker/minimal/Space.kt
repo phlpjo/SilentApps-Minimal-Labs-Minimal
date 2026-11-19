@@ -113,7 +113,7 @@ fun Starfield(mode: String, warp: MutableFloatState, speed: Float, modifier: Mod
             val twinkle = if (moving) 0.75f + 0.25f * sin(t * (0.6f + s.z) + s.phase) else 1f
             val a = (0.18f + 0.55f * s.z) * twinkle
             val p = Offset(s.x * size.width, s.y * size.height)
-            val c = Color.White.copy(alpha = a.coerceIn(0f, 1f))
+            val c = Ink.copy(alpha = (if (Palette.dark) a else a * 0.8f).coerceIn(0f, 1f))
             if (abs(len) > 1.5f) {
                 // Lichtstreifen: Länge mit Tiefe, Ende ausgeblendet
                 drawLine(c, p, Offset(p.x, p.y + len * s.z * s.z * 2.2f), strokeWidth = s.size * s.z * 2f, cap = StrokeCap.Round)

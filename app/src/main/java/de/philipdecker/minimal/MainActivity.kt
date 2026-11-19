@@ -3,6 +3,7 @@ package de.philipdecker.minimal
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -48,10 +49,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
+        applyTheme(resources.configuration)
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         reload()
@@ -151,6 +149,21 @@ class MainActivity : ComponentActivity() {
 
     private fun reload() {
         scope.launch { apps.value = withContext(Dispatchers.IO) { Apps.load(this@MainActivity) } }
+    }
+
+    /** Hell/Dunkel vom System übernehmen: Farben und Symbolfarbe der Systemleisten */
+    private fun applyTheme(c: Configuration) {
+        val dark = (c.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
+        Palette.dark = dark
+        val t = android.graphics.Color.TRANSPARENT
+        val bar = if (dark) SystemBarStyle.dark(t) else SystemBarStyle.light(t, t)
+        enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE))
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyTheme(newConfig)
     }
 
     // Home-Taste, während der Launcher offen ist → zurück zum Startbildschirm

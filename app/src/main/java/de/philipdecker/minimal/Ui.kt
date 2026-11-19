@@ -112,12 +112,17 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
-val Bg = Color.Black
-val Ink = Color.White
-val Dim = Color(0xFFADADB6)
-val Faint = Color(0xFF7A7A85)
-val Panel = Color(0xFF0B0B10)
-val Line = Color(0x38FFFFFF)
+/**
+ * Farben folgen dem System (hell/dunkel). Kontraste nach WCAG 2.2 gegen den Hintergrund:
+ * Ink 21:1 · Dim ≥ 12:1 · Faint ≥ 7:1 (AAA) – auch der leiseste Text bleibt gut lesbar.
+ */
+object Palette { var dark by mutableStateOf(true) }
+val Bg: Color get() = if (Palette.dark) Color.Black else Color.White
+val Ink: Color get() = if (Palette.dark) Color.White else Color.Black
+val Dim: Color get() = if (Palette.dark) Color(0xFFD2D2D8) else Color(0xFF38383F)
+val Faint: Color get() = if (Palette.dark) Color(0xFFA8A8B1) else Color(0xFF595962)
+val Panel: Color get() = if (Palette.dark) Color(0xFF101015) else Color(0xFFF3F3F6)
+val Line: Color get() = if (Palette.dark) Color(0x47FFFFFF) else Color(0x47000000)
 
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN)
 private val dateFmt = DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)
@@ -152,7 +157,7 @@ fun T(
     style = TextStyle(
         color = color, fontSize = size * LocalScale.current, fontWeight = weight, textAlign = align,
         fontFamily = LocalFont.current, letterSpacing = spacing,
-        shadow = if (glow) Shadow(color.copy(alpha = 0.45f), Offset.Zero, 28f) else null,
+        shadow = if (glow) Shadow(color.copy(alpha = if (Palette.dark) 0.45f else 0.18f), Offset.Zero, 28f) else null,
     ),
 )
 
