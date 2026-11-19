@@ -203,9 +203,9 @@ fun Modifier.depth(state: LazyListState, key: Any): Modifier = graphicsLayer {
     val d = ((item.offset + item.size / 2f - center) / half).coerceIn(-1f, 1f)
     // auch ganz oben/unten bleibt der Eintrag gut lesbar (min. 65 % Deckkraft ≈ 7:1 Kontrast)
     alpha = (1f - 0.35f * d * d).coerceIn(0.65f, 1f)
-    val s = 1f - 0.06f * abs(d)
+    val s = 1f - 0.1f * abs(d)
     scaleX = s; scaleY = s
-    rotationX = -d * 18f
+    rotationX = -d * 34f
     cameraDistance = 10f * density
     transformOrigin = TransformOrigin(0f, 0.5f)
     translationX = abs(d) * d * d * 18.dp.toPx()
