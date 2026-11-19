@@ -255,8 +255,12 @@ object Usage {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    /** Millisekunden im Vordergrund je Paket, heute. Leer ohne Berechtigung. */
-    @Suppress("DEPRECATION")
+    /**
+     * Millisekunden im Vordergrund je Paket, heute. Leer ohne Berechtigung.
+     * Es zählt immer nur genau eine App gleichzeitig (die zuletzt geöffnete),
+     * und Bildschirm aus / Sperre beenden die laufende Zeit. So gibt es keine
+     * doppelt gezählten Überlappungen und keine Apps, die über Nacht „weiterlaufen“.
+     */
     fun today(ctx: Context): Map<String, Long> {
         if (!granted(ctx)) return emptyMap()
         val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyMap()
@@ -264,19 +268,28 @@ object Usage {
         val start = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
-        val events = usm.queryEvents(start, now) ?: return emptyMap()
+        // etwas vor Mitternacht anfangen, damit eine schon offene App ab 0:00 mitzählt
+        val events = usm.queryEvents(start - 3 * 3_600_000L, now) ?: return emptyMap()
         val e = UsageEvents.Event()
-        val since = HashMap<String, Long>()
         val total = HashMap<String, Long>()
+        var cur: String? = null
+        var since = 0L
+        fun close(at: Long) {
+            val p = cur ?: return
+            val from = maxOf(since, start)
+            if (at > from) total[p] = (total[p] ?: 0L) + (at - from)
+            cur = null
+        }
         while (events.hasNextEvent()) {
             events.getNextEvent(e)
-            val p = e.packageName ?: continue
+            val t = e.timeStamp
             when (e.eventType) {
-                UsageEvents.Event.MOVE_TO_FOREGROUND -> if (p !in since) since[p] = e.timeStamp
-                UsageEvents.Event.MOVE_TO_BACKGROUND -> since.remove(p)?.let { total[p] = (total[p] ?: 0L) + (e.timeStamp - it) }
+                1 -> { close(t); cur = e.packageName; since = t }            // ACTIVITY_RESUMED
+                2, 23 -> if (e.packageName == cur) close(t)                // ACTIVITY_PAUSED / STOPPED
+                16, 17, 26 -> close(t)                                     // Bildschirm aus / Sperre / Aus
             }
         }
-        for ((p, t) in since) total[p] = (total[p] ?: 0L) + (now - t)
+        close(now)
         total.remove(ctx.packageName)
         return total
     }
