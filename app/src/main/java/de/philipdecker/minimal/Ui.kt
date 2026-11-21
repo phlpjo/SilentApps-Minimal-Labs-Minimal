@@ -900,6 +900,8 @@ fun SettingsScreen(
 
         Section("Version")
         Toggle("Minimal", "1.0.$current") { }
+        val labsCtx = androidx.compose.ui.platform.LocalContext.current
+        Option("Weitere Apps von SilentApps Minimal Labs") { openLabs(labsCtx) }
 
         Spacer(Modifier.height(24.dp))
         T("Zurück", size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))
@@ -941,4 +943,11 @@ private fun Toggle(label: String, value: String, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         T(value, size = 16.sp, color = Dim)
     }
+}
+
+/** „Weitere Apps“: öffnet die Website von SilentApps Minimal Labs im Browser (keine Internet-Berechtigung nötig) */
+fun openLabs(ctx: android.content.Context, url: String = "https://silentapps-minimal-labs.com/de/") {
+    try {
+        ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: Exception) { }
 }
