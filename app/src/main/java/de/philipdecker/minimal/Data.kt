@@ -44,7 +44,7 @@ object Apps {
             ctx.getSystemService(LauncherApps::class.java)!!
                 .startMainActivity(ComponentName(app.pkg, app.cls), Process.myUserHandle(), null, null)
         } catch (e: Exception) {
-            Toast.makeText(ctx, "${app.label} lässt sich nicht öffnen", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, tr("${app.label} lässt sich nicht öffnen", "${app.label} can't be opened"), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -203,7 +203,7 @@ class Prefs(ctx: Context) {
     /** Neuer Ordner – landet auf dem Startbildschirm, wenn dort Platz ist. Gibt die ID zurück. */
     fun createFolder(name: String, firstApp: String? = null): String {
         val id = System.currentTimeMillis().toString(36)
-        saveFolders(folders + Folder(id, name.trim().ifEmpty { "Ordner" }, listOfNotNull(firstApp)))
+        saveFolders(folders + Folder(id, name.trim().ifEmpty { tr("Ordner", "Folder") }, listOfNotNull(firstApp)))
         if (favorites.size < MAX_FAVORITES) saveFavorites(favorites + "folder:$id")
         return id
     }
@@ -291,9 +291,9 @@ fun battery(ctx: Context): Int? =
 fun duration(ms: Long): String {
     val min = ms / 60_000
     return when {
-        min < 1 -> "unter 1 Min."
-        min < 60 -> "$min Min."
-        else -> "${min / 60} Std. ${min % 60} Min."
+        min < 1 -> tr("unter 1 Min.", "under 1 min")
+        min < 60 -> tr("$min Min.", "$min min")
+        else -> tr("${min / 60} Std. ${min % 60} Min.", "${min / 60} h ${min % 60} min")
     }
 }
 

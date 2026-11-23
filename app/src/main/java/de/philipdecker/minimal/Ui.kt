@@ -124,8 +124,8 @@ val Faint: Color get() = if (Palette.dark) Color(0xFFA8A8B1) else Color(0xFF5959
 val Panel: Color get() = if (Palette.dark) Color(0xFF101015) else Color(0xFFF3F3F6)
 val Line: Color get() = if (Palette.dark) Color(0x47FFFFFF) else Color(0x47000000)
 
-private val timeFmt = DateTimeFormatter.ofPattern("HH:mm", Locale.GERMAN)
-private val dateFmt = DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)
+private val timeFmt get() = DateTimeFormatter.ofPattern("HH:mm", Lang.locale)
+private val dateFmt get() = DateTimeFormatter.ofPattern(if (Lang.de) "EEEE, d. MMMM" else "EEEE, MMMM d", Lang.locale)
 
 sealed interface Screen {
     data object Home : Screen
@@ -275,7 +275,7 @@ fun HomeScreen(
                 modifier = Modifier.floatIn(1).tap { Shortcuts.calendar(ctx) })
             val info = listOfNotNull(
                 if (prefs.showBattery) battery?.let { "$it %" } else null,
-                screenTime?.let { "${duration(it)} heute" },
+                screenTime?.let { tr("${duration(it)} heute", "${duration(it)} today") },
             )
             if (info.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
@@ -284,7 +284,7 @@ fun HomeScreen(
 
             Spacer(Modifier.weight(1f))
             if (favs.isEmpty()) {
-                T("Nach oben wischen für alle Apps.\nLange auf eine App drücken, um sie hier anzuheften.", size = 16.sp, color = Dim, modifier = Modifier.floatIn(3))
+                T(tr("Nach oben wischen für alle Apps.\nLange auf eine App drücken, um sie hier anzuheften.", "Swipe up for all apps.\nLong-press an app to pin it here."), size = 16.sp, color = Dim, modifier = Modifier.floatIn(3))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     favs.forEachIndexed { i, item ->
@@ -311,18 +311,18 @@ fun HomeScreen(
     editFolder?.let { f ->
         Sheet(onDismiss = { editFolder = null }) {
             T(f.name, size = 24.sp, weight = FontWeight.Light, glow = true)
-            T("Ordner · ${f.apps.size} Apps", size = 13.sp, color = Faint, spacing = 1.sp)
+            T(tr("Ordner · ${f.apps.size} Apps", "Folder · ${f.apps.size} apps"), size = 13.sp, color = Faint, spacing = 1.sp)
             Spacer(Modifier.height(14.dp))
-            Option("Öffnen") { editFolder = null; onFolder(f.id) }
-            Option("Umbenennen") { renameFolder = f; editFolder = null }
-            Option(if ("folder:${f.id}" in prefs.icons) "Symbol ändern" else "Symbol wählen") { folderIcon = f.id; editFolder = null }
-            Option("Ordner auflösen") { prefs.deleteFolder(f.id); editFolder = null }
-            Option("Abbrechen", color = Dim) { editFolder = null }
+            Option(tr("Öffnen", "Open")) { editFolder = null; onFolder(f.id) }
+            Option(tr("Umbenennen", "Rename")) { renameFolder = f; editFolder = null }
+            Option(if ("folder:${f.id}" in prefs.icons) tr("Symbol ändern", "Change icon") else tr("Symbol wählen", "Choose icon")) { folderIcon = f.id; editFolder = null }
+            Option(tr("Ordner auflösen", "Remove folder")) { prefs.deleteFolder(f.id); editFolder = null }
+            Option(tr("Abbrechen", "Cancel"), color = Dim) { editFolder = null }
         }
     }
     folderIcon?.let { id -> IconPicker(prefs, "folder:$id") { folderIcon = null } }
     renameFolder?.let { f ->
-        NameSheet("Ordner umbenennen", f.name, onCancel = { renameFolder = null }) { prefs.renameFolder(f.id, it); renameFolder = null }
+        NameSheet(tr("Ordner umbenennen", "Rename folder"), f.name, onCancel = { renameFolder = null }) { prefs.renameFolder(f.id, it); renameFolder = null }
     }
 }
 
@@ -412,7 +412,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f)) {
-                            if (query.isEmpty()) T("Suchen", size = 26.sp, color = Faint, weight = FontWeight.Light)
+                            if (query.isEmpty()) T(tr("Suchen", "Search"), size = 26.sp, color = Faint, weight = FontWeight.Light)
                             field()
                         }
                         // ✕: Suche leeren (Tastatur bleibt offen)
@@ -457,7 +457,7 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
                         modifier = Modifier.fillMaxWidth().depth(list, app.key).tap(onLong = { menu = app }) { onOpen(app) }.padding(vertical = 11.dp),
                     )
                 }
-                if (shown.isEmpty()) item { T("Keine App gefunden.", size = 16.sp, color = Dim, modifier = Modifier.padding(vertical = 10.dp)) }
+                if (shown.isEmpty()) item { T(tr("Keine App gefunden.", "No app found."), size = 16.sp, color = Dim, modifier = Modifier.padding(vertical = 10.dp)) }
             }
             if (q.isEmpty() && shown.isNotEmpty()) {
                 LetterBar(index, Modifier.align(Alignment.CenterEnd)) { i -> scope.launch { list.scrollToItem(i) } }
@@ -471,19 +471,19 @@ fun AppsScreen(prefs: Prefs, apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, o
         Sheet(onDismiss = { menu = null }) {
             T(app.label, size = 24.sp, weight = FontWeight.Light, glow = true)
             Spacer(Modifier.height(18.dp))
-            Option(if (fav) "Vom Startbildschirm entfernen" else if (full) "Startbildschirm voll (${Prefs.MAX_FAVORITES})" else "Auf den Startbildschirm", enabled = !full) {
+            Option(if (fav) tr("Vom Startbildschirm entfernen", "Remove from home screen") else if (full) tr("Startbildschirm voll (${Prefs.MAX_FAVORITES})", "Home screen full (${Prefs.MAX_FAVORITES})") else tr("Auf den Startbildschirm", "Add to home screen"), enabled = !full) {
                 prefs.toggleFavorite(app.key); menu = null
             }
-            Option("Umbenennen") { renaming = app; menu = null }
-            Option(if (app.key in prefs.icons) "Symbol ändern" else "Symbol wählen") { iconFor = app.key; menu = null }
-            Option("In Ordner legen") { folderPick = app; menu = null }
-            Option(if (app.key in prefs.hidden) "Einblenden" else "Ausblenden") { prefs.toggleHidden(app.key); menu = null }
-            Option(if (app.pkg in prefs.distracting) "Nicht mehr ablenkend" else "Als ablenkend markieren") {
+            Option(tr("Umbenennen", "Rename")) { renaming = app; menu = null }
+            Option(if (app.key in prefs.icons) tr("Symbol ändern", "Change icon") else tr("Symbol wählen", "Choose icon")) { iconFor = app.key; menu = null }
+            Option(tr("In Ordner legen", "Add to folder")) { folderPick = app; menu = null }
+            Option(if (app.key in prefs.hidden) tr("Einblenden", "Unhide") else tr("Ausblenden", "Hide")) { prefs.toggleHidden(app.key); menu = null }
+            Option(if (app.pkg in prefs.distracting) tr("Nicht mehr ablenkend", "Not distracting anymore") else tr("Als ablenkend markieren", "Mark as distracting")) {
                 prefs.toggleDistracting(app.pkg); menu = null
             }
-            Option("App-Info") { Apps.info(ctx, app); menu = null }
-            Option("Deinstallieren") { Apps.uninstall(ctx, app); menu = null }
-            Option("Abbrechen", color = Dim) { menu = null }
+            Option(tr("App-Info", "App info")) { Apps.info(ctx, app); menu = null }
+            Option(tr("Deinstallieren", "Uninstall")) { Apps.uninstall(ctx, app); menu = null }
+            Option(tr("Abbrechen", "Cancel"), color = Dim) { menu = null }
         }
     }
     renaming?.let { app -> RenameSheet(prefs, app) { renaming = null } }
@@ -497,7 +497,7 @@ fun RenameSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(100); focus.requestFocus() }
     Sheet(onDismiss = onDone) {
-        T("Umbenennen", size = 13.sp, color = Faint, spacing = 2.sp)
+        T(tr("Umbenennen", "Rename"), size = 13.sp, color = Faint, spacing = 2.sp)
         Spacer(Modifier.height(12.dp))
         BasicTextField(
             value = name, onValueChange = { name = it.take(40) }, singleLine = true,
@@ -509,9 +509,9 @@ fun RenameSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
         )
         Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(1.dp).background(Line))
         Spacer(Modifier.height(14.dp))
-        Option("Speichern") { prefs.rename(app.key, name); onDone() }
-        if (app.key in prefs.renames) Option("Originalnamen verwenden", color = Dim) { prefs.rename(app.key, ""); onDone() }
-        Option("Abbrechen", color = Dim) { onDone() }
+        Option(tr("Speichern", "Save")) { prefs.rename(app.key, name); onDone() }
+        if (app.key in prefs.renames) Option(tr("Originalnamen verwenden", "Use original name"), color = Dim) { prefs.rename(app.key, ""); onDone() }
+        Option(tr("Abbrechen", "Cancel"), color = Dim) { onDone() }
     }
 }
 
@@ -520,7 +520,7 @@ fun RenameSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
 fun IconPicker(prefs: Prefs, key: String, onDone: () -> Unit) {
     val current = prefs.icons[key]
     Sheet(onDismiss = onDone) {
-        T("Symbol wählen", size = 13.sp, color = Faint, spacing = 2.sp)
+        T(tr("Symbol wählen", "Choose icon"), size = 13.sp, color = Faint, spacing = 2.sp)
         Spacer(Modifier.height(14.dp))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(52.dp),
@@ -537,8 +537,8 @@ fun IconPicker(prefs: Prefs, key: String, onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        if (current != null) Option("Kein Symbol", color = Dim) { prefs.setIcon(key, null); onDone() }
-        Option("Abbrechen", color = Dim) { onDone() }
+        if (current != null) Option(tr("Kein Symbol", "No icon"), color = Dim) { prefs.setIcon(key, null); onDone() }
+        Option(tr("Abbrechen", "Cancel"), color = Dim) { onDone() }
     }
 }
 
@@ -547,11 +547,11 @@ fun IconPicker(prefs: Prefs, key: String, onDone: () -> Unit) {
 fun FolderPickSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
     var naming by remember { mutableStateOf(false) }
     if (naming) {
-        NameSheet("Neuer Ordner", "", onCancel = onDone) { name -> prefs.createFolder(name, app.key); onDone() }
+        NameSheet(tr("Neuer Ordner", "New folder"), "", onCancel = onDone) { name -> prefs.createFolder(name, app.key); onDone() }
         return
     }
     Sheet(onDismiss = onDone) {
-        T("In Ordner legen", size = 13.sp, color = Faint, spacing = 2.sp)
+        T(tr("In Ordner legen", "Add to folder"), size = 13.sp, color = Faint, spacing = 2.sp)
         Spacer(Modifier.height(4.dp))
         T(app.label, size = 22.sp, weight = FontWeight.Light)
         Spacer(Modifier.height(12.dp))
@@ -562,8 +562,8 @@ fun FolderPickSheet(prefs: Prefs, app: AppEntry, onDone: () -> Unit) {
                 T(if (inside) "✓" else "", size = 18.sp)
             }
         }
-        Option("Neuer Ordner …") { naming = true }
-        Option("Fertig", color = Dim) { onDone() }
+        Option(tr("Neuer Ordner …", "New folder …")) { naming = true }
+        Option(tr("Fertig", "Done"), color = Dim) { onDone() }
     }
 }
 
@@ -583,12 +583,12 @@ fun NameSheet(title: String, initial: String, onCancel: () -> Unit, onSave: (Str
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, capitalization = KeyboardCapitalization.Sentences),
             keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onSave(name) }),
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            decorationBox = { field -> Box { if (name.isEmpty()) T("z. B. Nachrichten", size = 24.sp, color = Faint, weight = FontWeight.Light); field() } },
+            decorationBox = { field -> Box { if (name.isEmpty()) T(tr("z. B. Nachrichten", "e.g. Messages"), size = 24.sp, color = Faint, weight = FontWeight.Light); field() } },
         )
         Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(1.dp).background(Line))
         Spacer(Modifier.height(14.dp))
-        Option("Speichern", enabled = name.isNotBlank()) { onSave(name) }
-        Option("Abbrechen", color = Dim) { onCancel() }
+        Option(tr("Speichern", "Save"), enabled = name.isNotBlank()) { onSave(name) }
+        Option(tr("Abbrechen", "Cancel"), color = Dim) { onCancel() }
     }
 }
 
@@ -613,7 +613,7 @@ fun FolderScreen(prefs: Prefs, id: String, all: List<AppEntry>, onOpen: (AppEntr
         T(folder.name.uppercase(Locale.GERMAN), size = 12.sp, color = Faint, weight = FontWeight.Medium, spacing = 3.sp, modifier = Modifier.floatIn(0))
         Spacer(Modifier.height(18.dp))
         if (apps.isEmpty()) {
-            T("Noch leer. In der App-Liste lange auf eine App drücken → „In Ordner legen“.", size = 16.sp, color = Dim, modifier = Modifier.floatIn(1))
+            T(tr("Noch leer. In der App-Liste lange auf eine App drücken → „In Ordner legen“.", "Still empty. In the app list, long-press an app → “Add to folder”."), size = 16.sp, color = Dim, modifier = Modifier.floatIn(1))
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 apps.forEachIndexed { i, app ->
@@ -626,7 +626,7 @@ fun FolderScreen(prefs: Prefs, id: String, all: List<AppEntry>, onOpen: (AppEntr
             }
         }
         Spacer(Modifier.weight(1.4f))
-        T("Zurück", size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))
+        T(tr("Zurück", "Back"), size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))
     }
 
     remove?.let { app ->
@@ -634,10 +634,10 @@ fun FolderScreen(prefs: Prefs, id: String, all: List<AppEntry>, onOpen: (AppEntr
             T(app.label, size = 24.sp, weight = FontWeight.Light, glow = true)
             Spacer(Modifier.height(14.dp))
             val pos = folder.apps.indexOf(app.key)
-            Option("Nach oben", enabled = pos > 0) { prefs.moveInFolder(folder.id, app.key, -1); remove = null }
-            Option("Nach unten", enabled = pos in 0 until folder.apps.lastIndex) { prefs.moveInFolder(folder.id, app.key, 1); remove = null }
-            Option("Aus „${folder.name}“ entfernen") { prefs.toggleInFolder(folder.id, app.key); remove = null }
-            Option("Abbrechen", color = Dim) { remove = null }
+            Option(tr("Nach oben", "Move up"), enabled = pos > 0) { prefs.moveInFolder(folder.id, app.key, -1); remove = null }
+            Option(tr("Nach unten", "Move down"), enabled = pos in 0 until folder.apps.lastIndex) { prefs.moveInFolder(folder.id, app.key, 1); remove = null }
+            Option(tr("Aus „${folder.name}“ entfernen", "Remove from “${folder.name}”")) { prefs.toggleInFolder(folder.id, app.key); remove = null }
+            Option(tr("Abbrechen", "Cancel"), color = Dim) { remove = null }
         }
     }
 }
@@ -753,10 +753,10 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
         Spacer(Modifier.weight(1f))
         T(app.label, size = 30.sp, weight = FontWeight.Light, align = TextAlign.Center, glow = true, modifier = Modifier.floatIn(0))
         Spacer(Modifier.height(8.dp))
-        T("Brauchst du das gerade wirklich?", size = 17.sp, color = Dim, align = TextAlign.Center, modifier = Modifier.floatIn(1))
+        T(tr("Brauchst du das gerade wirklich?", "Do you really need this right now?"), size = 17.sp, color = Dim, align = TextAlign.Center, modifier = Modifier.floatIn(1))
         used?.let {
             Spacer(Modifier.height(4.dp))
-            T("Heute schon ${duration(it)}", size = 14.sp, color = Faint, align = TextAlign.Center, spacing = 1.sp)
+            T(tr("Heute schon ${duration(it)}", "Already ${duration(it)} today"), size = 14.sp, color = Faint, align = TextAlign.Center, spacing = 1.sp)
         }
         Spacer(Modifier.height(48.dp))
         Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
@@ -771,11 +771,11 @@ fun PauseScreen(app: AppEntry, seconds: Int, onCancel: () -> Unit, onOpen: () ->
             T(if (left > 0) "$left" else "", size = 34.sp, weight = FontWeight.Light)
         }
         Spacer(Modifier.height(12.dp))
-        T(if (scale > 0.78f) "ausatmen" else "einatmen", size = 13.sp, color = Faint, spacing = 3.sp)
+        T(if (scale > 0.78f) tr("ausatmen", "breathe out") else tr("einatmen", "breathe in"), size = 13.sp, color = Faint, spacing = 3.sp)
         Spacer(Modifier.weight(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            T("Lieber nicht", size = 18.sp, modifier = Modifier.tap { onCancel() }.padding(12.dp))
-            T("Öffnen", size = 18.sp, color = if (left > 0) Faint else Ink, modifier = Modifier.tap { if (left == 0) onOpen() }.padding(12.dp))
+            T(tr("Lieber nicht", "Rather not"), size = 18.sp, modifier = Modifier.tap { onCancel() }.padding(12.dp))
+            T(tr("Öffnen", "Open"), size = 18.sp, color = if (left > 0) Faint else Ink, modifier = Modifier.tap { if (left == 0) onOpen() }.padding(12.dp))
         }
     }
 }
@@ -801,9 +801,9 @@ fun SettingsScreen(
     }
     fun open(action: String) = try { ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
     fun swipeLabel(a: SwipeAction) = when {
-        a == "notif" -> "Benachrichtigungen"
-        a.startsWith("app:") -> byKey[a.removePrefix("app:")]?.label ?: "App fehlt"
-        else -> "nichts"
+        a == "notif" -> tr("Benachrichtigungen", "Notifications")
+        a.startsWith("app:") -> byKey[a.removePrefix("app:")]?.label ?: tr("App fehlt", "App missing")
+        else -> tr("nichts", "nothing")
     }
     val current = remember { currentBuild(ctx) }
 
@@ -814,16 +814,16 @@ fun SettingsScreen(
             .verticalScroll(scroll)
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
-        T("Einstellungen", size = 32.sp, weight = FontWeight.Light, glow = true, modifier = Modifier.floatIn(0))
+        T(tr("Einstellungen", "Settings"), size = 32.sp, weight = FontWeight.Light, glow = true, modifier = Modifier.floatIn(0))
         Spacer(Modifier.height(24.dp))
-        Option("Als Standard-Startbildschirm festlegen") { open(Settings.ACTION_HOME_SETTINGS) }
+        Option(tr("Als Standard-Startbildschirm festlegen", "Set as default home screen")) { open(Settings.ACTION_HOME_SETTINGS) }
 
-        Section("Startbildschirm")
-        if (prefs.favorites.isEmpty()) T("Noch keine Apps. In der App-Liste lange auf eine App drücken.", size = 15.sp, color = Dim)
+        Section(tr("Startbildschirm", "Home screen"))
+        if (prefs.favorites.isEmpty()) T(tr("Noch keine Apps. In der App-Liste lange auf eine App drücken.", "No apps yet. Long-press an app in the app list."), size = 15.sp, color = Dim)
         prefs.favorites.forEachIndexed { i, key ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 val folder = if (key.startsWith("folder:")) prefs.folder(key.removePrefix("folder:")) else null
-                T(folder?.let { "${it.name}  ·  Ordner" } ?: byKey[key]?.label ?: "(entfernt)", size = 18.sp, modifier = Modifier.weight(1f))
+                T(folder?.let { "${it.name}  ·  " + tr("Ordner", "folder") } ?: byKey[key]?.label ?: tr("(entfernt)", "(removed)"), size = 18.sp, modifier = Modifier.weight(1f))
                 T("↑", size = 20.sp, color = if (i > 0) Ink else Faint, modifier = Modifier.tap { prefs.moveFavorite(key, -1) }.padding(horizontal = 10.dp))
                 T("↓", size = 20.sp, color = if (i < prefs.favorites.lastIndex) Ink else Faint, modifier = Modifier.tap { prefs.moveFavorite(key, 1) }.padding(horizontal = 10.dp))
                 T("✕", size = 18.sp, color = Dim, modifier = Modifier.tap {
@@ -831,19 +831,19 @@ fun SettingsScreen(
                 }.padding(start = 10.dp))
             }
         }
-        Option(if (prefs.favorites.size >= Prefs.MAX_FAVORITES) "Neuer Ordner (Startbildschirm voll)" else "+ Neuer Ordner", color = Dim,
+        Option(if (prefs.favorites.size >= Prefs.MAX_FAVORITES) tr("Neuer Ordner (Startbildschirm voll)", "New folder (home screen full)") else tr("+ Neuer Ordner", "+ New folder"), color = Dim,
             enabled = prefs.favorites.size < Prefs.MAX_FAVORITES) { newFolder = true }
 
-        Section("Gesten")
-        T("Nach oben wischen öffnet alle Apps. Uhrzeit antippen öffnet den Wecker, Datum den Kalender.", size = 14.sp, color = Faint)
+        Section(tr("Gesten", "Gestures"))
+        T(tr("Nach oben wischen öffnet alle Apps. Uhrzeit antippen öffnet den Wecker, Datum den Kalender.", "Swipe up opens all apps. Tap the time for the alarm clock, the date for the calendar."), size = 14.sp, color = Faint)
         Spacer(Modifier.height(6.dp))
-        Toggle("Nach unten wischen", swipeLabel(prefs.swipeDown)) { picking = "down" }
-        Toggle("Nach links wischen", swipeLabel(prefs.swipeLeft)) { picking = "left" }
-        Toggle("Nach rechts wischen", swipeLabel(prefs.swipeRight)) { picking = "right" }
+        Toggle(tr("Nach unten wischen", "Swipe down"), swipeLabel(prefs.swipeDown)) { picking = "down" }
+        Toggle(tr("Nach links wischen", "Swipe left"), swipeLabel(prefs.swipeLeft)) { picking = "left" }
+        Toggle(tr("Nach rechts wischen", "Swipe right"), swipeLabel(prefs.swipeRight)) { picking = "right" }
 
-        Section("Ablenkende Apps")
-        Toggle("Pause vor dem Öffnen", "${prefs.pauseSeconds} Sek.") { prefs.cyclePause() }
-        if (prefs.distracting.isEmpty()) T("Keine. In der App-Liste lange auf eine App drücken → „Als ablenkend markieren“.", size = 15.sp, color = Dim)
+        Section(tr("Ablenkende Apps", "Distracting apps"))
+        Toggle(tr("Pause vor dem Öffnen", "Pause before opening"), tr("${prefs.pauseSeconds} Sek.", "${prefs.pauseSeconds} s")) { prefs.cyclePause() }
+        if (prefs.distracting.isEmpty()) T(tr("Keine. In der App-Liste lange auf eine App drücken → „Als ablenkend markieren“.", "None. In the app list, long-press an app → “Mark as distracting”."), size = 15.sp, color = Dim)
         prefs.distracting.sortedBy { (byPkg[it]?.label ?: it).lowercase() }.forEach { pkg ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 T(byPkg[pkg]?.label ?: pkg, size = 18.sp, modifier = Modifier.weight(1f))
@@ -851,38 +851,38 @@ fun SettingsScreen(
             }
         }
 
-        Section("Ausgeblendete Apps")
-        Toggle("In der App-Liste anzeigen", if (prefs.showHidden) "an (abgedunkelt)" else "aus") { prefs.toggleShowHidden() }
-        if (prefs.hidden.isEmpty()) T("Keine. In der App-Liste lange auf eine App drücken → „Ausblenden“.", size = 15.sp, color = Dim)
+        Section(tr("Ausgeblendete Apps", "Hidden apps"))
+        Toggle(tr("In der App-Liste anzeigen", "Show in app list"), if (prefs.showHidden) tr("an (abgedunkelt)", "on (dimmed)") else tr("aus", "off")) { prefs.toggleShowHidden() }
+        if (prefs.hidden.isEmpty()) T(tr("Keine. In der App-Liste lange auf eine App drücken → „Ausblenden“.", "None. In the app list, long-press an app → “Hide”."), size = 15.sp, color = Dim)
         prefs.hidden.sortedBy { (byKey[it]?.label ?: it).lowercase() }.forEach { key ->
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 T(byKey[key]?.label ?: key.substringBefore('/'), size = 18.sp, modifier = Modifier.weight(1f))
-                T("einblenden", size = 15.sp, color = Dim, modifier = Modifier.tap { prefs.toggleHidden(key) }.padding(start = 10.dp))
+                T(tr("einblenden", "unhide"), size = 15.sp, color = Dim, modifier = Modifier.tap { prefs.toggleHidden(key) }.padding(start = 10.dp))
             }
         }
 
-        Section("Aussehen")
-        Toggle("Schrift", fontLabel(prefs.font)) { prefs.cycleFont() }
-        Toggle("Schriftgröße", sizeLabel(prefs.fontSize)) { prefs.cycleFontSize() }
-        Toggle("Sternenhimmel", when (prefs.stars) { "still" -> "ruhig"; "off" -> "aus"; else -> "bewegt" }) { prefs.cycleStars() }
-        Toggle("Sterne beim Scrollen", warpLabel(prefs.warpLevel)) { prefs.cycleWarp() }
-        Toggle("Symbole vor Namen", if (prefs.showIcons) "an" else "aus") { prefs.toggleShowIcons() }
-        Toggle("Akku anzeigen", if (prefs.showBattery) "an" else "aus") { prefs.toggleBattery() }
-        Toggle("Bildschirmzeit anzeigen", if (prefs.showScreenTime) "an" else "aus") { prefs.toggleScreenTime() }
-        if (!usage) Option("Nutzungszugriff erlauben (für Bildschirmzeit)", color = Dim) { open(Settings.ACTION_USAGE_ACCESS_SETTINGS) }
-        Toggle("Tastatur in der App-Liste sofort", if (prefs.keyboardOnOpen) "an" else "aus") { prefs.toggleKeyboard() }
+        Section(tr("Aussehen", "Appearance"))
+        Toggle(tr("Schrift", "Font"), fontLabel(prefs.font)) { prefs.cycleFont() }
+        Toggle(tr("Schriftgröße", "Font size"), sizeLabel(prefs.fontSize)) { prefs.cycleFontSize() }
+        Toggle(tr("Sternenhimmel", "Starfield"), when (prefs.stars) { "still" -> tr("ruhig", "still"); "off" -> tr("aus", "off"); else -> tr("bewegt", "moving") }) { prefs.cycleStars() }
+        Toggle(tr("Sterne beim Scrollen", "Stars while scrolling"), warpLabel(prefs.warpLevel)) { prefs.cycleWarp() }
+        Toggle(tr("Symbole vor Namen", "Icons before names"), if (prefs.showIcons) tr("an", "on") else tr("aus", "off")) { prefs.toggleShowIcons() }
+        Toggle(tr("Akku anzeigen", "Show battery"), if (prefs.showBattery) tr("an", "on") else tr("aus", "off")) { prefs.toggleBattery() }
+        Toggle(tr("Bildschirmzeit anzeigen", "Show screen time"), if (prefs.showScreenTime) tr("an", "on") else tr("aus", "off")) { prefs.toggleScreenTime() }
+        if (!usage) Option(tr("Nutzungszugriff erlauben (für Bildschirmzeit)", "Allow usage access (for screen time)"), color = Dim) { open(Settings.ACTION_USAGE_ACCESS_SETTINGS) }
+        Toggle(tr("Tastatur in der App-Liste sofort", "Keyboard right away in app list"), if (prefs.keyboardOnOpen) tr("an", "on") else tr("aus", "off")) { prefs.toggleKeyboard() }
 
         Section("Version")
         Toggle("Minimal", "1.0.$current") { }
         val labsCtx = androidx.compose.ui.platform.LocalContext.current
-        Option("Weitere Apps von SilentApps Minimal Labs") { openLabs(labsCtx) }
-        Option("Fehler melden & Vorschläge") { mailLabs(labsCtx, "Minimal") }
+        Option(tr("Weitere Apps von SilentApps Minimal Labs", "More apps from SilentApps Minimal Labs")) { openLabs(labsCtx, if (Lang.de) "https://silentapps-minimal-labs.com/de/" else "https://silentapps-minimal-labs.com/") }
+        Option(tr("Fehler melden & Vorschläge", "Report a bug & suggestions")) { mailLabs(labsCtx, "Minimal") }
 
         Spacer(Modifier.height(24.dp))
-        T("Zurück", size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))
+        T(tr("Zurück", "Back"), size = 15.sp, color = Faint, modifier = Modifier.align(Alignment.CenterHorizontally).tap { onBack() }.padding(12.dp))
     }
 
-    if (newFolder) NameSheet("Neuer Ordner", "", onCancel = { newFolder = false }) { prefs.createFolder(it); newFolder = false }
+    if (newFolder) NameSheet(tr("Neuer Ordner", "New folder"), "", onCancel = { newFolder = false }) { prefs.createFolder(it); newFolder = false }
     picking?.let { dir ->
         AppPicker(all, onDismiss = { picking = null }) { action -> prefs.setSwipe(dir, action); picking = null }
     }
@@ -892,8 +892,8 @@ fun SettingsScreen(
 @Composable
 private fun AppPicker(apps: List<AppEntry>, onDismiss: () -> Unit, onPick: (SwipeAction) -> Unit) {
     Sheet(onDismiss) {
-        Option("Nichts", color = Dim) { onPick("") }
-        Option("Benachrichtigungen") { onPick("notif") }
+        Option(tr("Nichts", "Nothing"), color = Dim) { onPick("") }
+        Option(tr("Benachrichtigungen", "Notifications")) { onPick("notif") }
         Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Line))
         val list = rememberLazyListState()
         LazyColumn(Modifier.heightIn(max = 360.dp), state = list) {

@@ -5,7 +5,7 @@ NOBODY_EN = "no"
 
 APPS = [
  dict(slug="minimal", name="Minimal", repo="labs-Minimal", package="app.minimal", artifact="Minimal",
-      price=0.99, category="Personalisierung", languages=["de"], motif="",
+      price=0.99, category="Personalisierung", languages=["en", "de"], motif="",
       declarations=[
           "Nutzungszugriff (PACKAGE_USAGE_STATS): nur für die Bildschirmzeit auf dem Gerät, keine Übertragung. Keine Formular-Pflicht, aber in der Beschreibung erwähnen.",
           "App-Sichtbarkeit: nur `<queries>` für Startbildschirm-Apps, kein QUERY_ALL_PACKAGES – keine Erklärung nötig.",

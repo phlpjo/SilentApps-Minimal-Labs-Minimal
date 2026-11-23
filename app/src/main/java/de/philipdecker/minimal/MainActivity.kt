@@ -155,6 +155,7 @@ class MainActivity : ComponentActivity() {
     private fun applyTheme(c: Configuration) {
         val dark = (c.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
         Palette.dark = dark
+        Lang.de = c.locales[0].language == "de"
         val t = android.graphics.Color.TRANSPARENT
         val bar = if (dark) SystemBarStyle.dark(t) else SystemBarStyle.light(t, t)
         enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)

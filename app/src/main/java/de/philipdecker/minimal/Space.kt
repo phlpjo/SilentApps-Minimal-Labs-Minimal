@@ -46,10 +46,10 @@ fun fontFor(key: String): FontFamily = when (key) {
 }
 fun fontLabel(key: String) = when (key) { "system" -> "System"; "mono" -> "Mono"; else -> "Space Grotesk" }
 fun sizeFactor(i: Int) = when (i) { 0 -> 0.88f; 2 -> 1.16f; else -> 1f }
-fun sizeLabel(i: Int) = when (i) { 0 -> "klein"; 2 -> "groß"; else -> "normal" }
+fun sizeLabel(i: Int) = when (i) { 0 -> tr("klein", "small"); 2 -> tr("groß", "large"); else -> "normal" }
 /** Stern-Mitbewegung beim Scrollen: 0 aus, 1 sehr langsam, 2 langsam, 3 normal */
 fun warpFactor(level: Int) = when (level) { 0 -> 0f; 1 -> 0.15f; 2 -> 0.4f; else -> 1f }
-fun warpLabel(level: Int) = when (level) { 0 -> "aus"; 1 -> "sehr langsam"; 2 -> "langsam"; else -> "normal" }
+fun warpLabel(level: Int) = when (level) { 0 -> tr("aus", "off"); 1 -> tr("sehr langsam", "very slow"); 2 -> tr("langsam", "slow"); else -> "normal" }
 
 val LocalFont = compositionLocalOf { SpaceGrotesk }
 val LocalScale = compositionLocalOf { 1f }
