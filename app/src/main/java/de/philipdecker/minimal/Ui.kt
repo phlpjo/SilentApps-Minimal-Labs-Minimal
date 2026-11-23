@@ -327,24 +327,7 @@ fun HomeScreen(
         }
     }
     folderIcon?.let { id -> IconPicker(prefs, "folder:$id") { folderIcon = null } }
-    if (lockSetup) {
-        Sheet(onDismiss = { lockSetup = false }) {
-            T("Doppeltipp sperrt", size = 24.sp, weight = FontWeight.Light, glow = true)
-            Spacer(Modifier.height(10.dp))
-            T(
-                if (LockService.supported) "Dafür braucht Minimal einmal die Freigabe als Bedienungshilfe. Sie wird nur zum Sperren genutzt, es werden keine Inhalte gelesen.\n\nEinstellungen → Bedienungshilfen → „Minimal – Doppeltipp sperrt“ → an."
-                else "Das Sperren per Doppeltipp braucht Android 9 oder neuer.",
-                size = 15.sp, color = Dim,
-            )
-            Spacer(Modifier.height(14.dp))
-            if (LockService.supported) Option("Bedienungshilfen öffnen") {
-                lockSetup = false
-                try { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
-            }
-            Option("Doppeltipp ausschalten", color = Dim) { prefs.toggleDoubleTapLock(); lockSetup = false }
-            Option("Abbrechen", color = Dim) { lockSetup = false }
-        }
-    }
+    if (lockSetup) LockDisclosure(prefs) { lockSetup = false }
     renameFolder?.let { f ->
         NameSheet("Ordner umbenennen", f.name, onCancel = { renameFolder = null }) { prefs.renameFolder(f.id, it); renameFolder = null }
     }
@@ -811,6 +794,8 @@ fun SettingsScreen(
     prefs: Prefs, all: List<AppEntry>, tick: Int,
     onBack: () -> Unit,
 ) {
+    var lockInfo by remember { mutableStateOf(false) }
+    if (lockInfo) LockDisclosure(prefs) { lockInfo = false }
     val ctx = LocalContext.current
     val byKey = remember(all) { all.associateBy { it.key } }
     val byPkg = remember(all) { all.associateBy { it.pkg } }
@@ -862,7 +847,7 @@ fun SettingsScreen(
         T("Nach oben wischen öffnet alle Apps. Uhrzeit antippen öffnet den Wecker, Datum den Kalender.", size = 14.sp, color = Faint)
         Spacer(Modifier.height(6.dp))
         Toggle("Doppeltipp sperrt den Bildschirm", when { !prefs.doubleTapLock -> "aus"; LockService.enabled(ctx) -> "an"; else -> "an · Freigabe fehlt" }) { prefs.toggleDoubleTapLock() }
-        if (prefs.doubleTapLock && LockService.supported && !LockService.enabled(ctx)) Option("Freigabe in den Bedienungshilfen erteilen", color = Dim) { open(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
+        if (prefs.doubleTapLock && LockService.supported && !LockService.enabled(ctx)) Option("Freigabe in den Bedienungshilfen erteilen", color = Dim) { lockInfo = true }
         Toggle("Nach unten wischen", swipeLabel(prefs.swipeDown)) { picking = "down" }
         Toggle("Nach links wischen", swipeLabel(prefs.swipeLeft)) { picking = "left" }
         Toggle("Nach rechts wischen", swipeLabel(prefs.swipeRight)) { picking = "right" }
@@ -961,4 +946,37 @@ fun mailLabs(ctx: android.content.Context, app: String) {
     try {
         ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, uri).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: Exception) { }
+}
+
+/**
+ * Hinweis vor der Bedienungshilfe (Google-Play-Vorgabe „Prominent Disclosure“): erklärt, was die
+ * Freigabe darf und was nicht, und öffnet die Bedienungshilfen erst nach ausdrücklicher Zustimmung.
+ */
+@Composable
+fun LockDisclosure(prefs: Prefs, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    Sheet(onDismiss = onDismiss) {
+        T("Doppeltipp sperrt", size = 24.sp, weight = FontWeight.Light, glow = true)
+        Spacer(Modifier.height(10.dp))
+        if (LockService.supported) {
+            T("Minimal nutzt dafür die Android-Bedienungshilfen-Schnittstelle (AccessibilityService).", size = 15.sp, color = Dim)
+            Spacer(Modifier.height(8.dp))
+            T("Sie wird ausschließlich genutzt, um den Bildschirm zu sperren, wenn du doppelt auf den Startbildschirm tippst. " +
+                "Minimal liest damit keine Bildschirminhalte, keine Eingaben und keine anderen Apps, speichert nichts und sendet nichts – die App hat keinen Internetzugriff.",
+                size = 15.sp, color = Dim)
+            Spacer(Modifier.height(8.dp))
+            T("Nach deiner Zustimmung öffnen sich die Bedienungshilfen: „Minimal – Doppeltipp sperrt“ → an. Du kannst die Freigabe dort jederzeit wieder ausschalten.",
+                size = 13.sp, color = Faint)
+            Spacer(Modifier.height(14.dp))
+            Option("Zustimmen und Bedienungshilfen öffnen") {
+                onDismiss()
+                try { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+            }
+        } else {
+            T("Das Sperren per Doppeltipp braucht Android 9 oder neuer.", size = 15.sp, color = Dim)
+            Spacer(Modifier.height(14.dp))
+        }
+        Option("Ablehnen und Doppeltipp ausschalten", color = Dim) { if (prefs.doubleTapLock) prefs.toggleDoubleTapLock(); onDismiss() }
+        Option("Abbrechen", color = Dim) { onDismiss() }
+    }
 }
