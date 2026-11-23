@@ -11,7 +11,7 @@ from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 
-HOME = pathlib.Path("/home/claude")
+HOME = pathlib.Path(__file__).resolve().parent.parent.parent  # Ordner, in dem alle Repo-Klone als labs-<Name> liegen
 FONT = HOME / "labs-Minimal/app/src/main/res/font"
 SITE = "https://silentapps-minimal-labs.com"
 MAIL = "apps@silentapps-minimal-labs.com"
@@ -19,6 +19,7 @@ DEV = "SilentApps Minimal Labs"
 
 RING = '<circle cx="54" cy="54" r="18" fill="none" stroke="{c}" stroke-width="4"/>'
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from labs_apps import APPS  # noqa: E402
 
 
