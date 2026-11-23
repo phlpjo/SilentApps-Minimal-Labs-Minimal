@@ -96,7 +96,6 @@ class Prefs(ctx: Context) {
     /** Ausgeblendete Apps trotzdem in der App-Liste zeigen (abgedunkelt) */
     var showHidden by mutableStateOf(sp.getBoolean("showHidden", false))
         private set
-        private set
     /** Wischgesten: unten/links/rechts (nach oben = alle Apps) */
     var swipeDown by mutableStateOf(sp.getString("swipeDown", "notif") ?: "notif")
         private set
