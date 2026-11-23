@@ -26,7 +26,6 @@ Mark apps as distracting. Before they open, a short pause with a breathing circl
 GESTURES
 • Swipe down: notifications (or an app of your choice)
 • Swipe left or right: your choice
-• Double-tap locks the screen (optional, after your consent)
 
 CALM DESIGN
 Black and white, light or dark following your system, easy-to-read type, a slow starfield in the background (can be turned off). Three fonts, three sizes.
@@ -35,8 +34,5 @@ YOUR DATA STAYS WITH YOU
 • No internet permission
 • No account, no ads, no tracking
 • Screen time is calculated on the device only
-
-ACCESSIBILITY SERVICE NOTICE
-For “double-tap to lock”, Minimal uses the Android accessibility service API. It is used solely to lock the screen; Minimal reads no content with it. The feature is optional and only active after your explicit consent.
 
 Buy once, stay calm.

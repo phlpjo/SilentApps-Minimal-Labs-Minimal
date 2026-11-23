@@ -22,7 +22,6 @@ Kein Analyse-SDK, keine Werbung, keine Absturzberichte, keine Telemetrie.
 | Berechtigung | Wofür | Pflicht? |
 |---|---|---|
 | Apps auflisten (`<queries>` für Startbildschirm-Apps) | Damit die App-Liste alle Apps zeigen kann | ja |
-| Bedienungshilfe „Minimal – Doppeltipp sperrt“ | Nur um per Doppeltipp den Bildschirm zu sperren – liest keine Bildschirminhalte | nein, musst du selbst in den Bedienungshilfen einschalten |
 | `PACKAGE_USAGE_STATS` (Nutzungszugriff) | Bildschirmzeit heute und Nutzungszeit im Pause-Bildschirm – wird **nur auf dem Gerät** ausgewertet | nein, musst du selbst in den Android-Einstellungen erlauben |
 | `EXPAND_STATUS_BAR` | Wischgeste „Benachrichtigungen herunterziehen“ | ja (ohne Nachfrage, harmlos) |
 | `REQUEST_DELETE_PACKAGES` | „Deinstallieren“ im App-Menü – Android fragt trotzdem jedes Mal nach | ja (ohne Nachfrage) |

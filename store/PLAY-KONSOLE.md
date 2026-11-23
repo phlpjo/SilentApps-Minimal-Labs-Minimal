@@ -30,7 +30,6 @@
 - Zielgruppe 13+ (nicht für Kinder konzipiert) · Werbung: nein
 
 ## Besondere Erklärungen
-- Bedienungshilfen (AccessibilityService): App-Inhalte → Bedienungshilfen-API. Zweck: Bildschirm per Doppeltipp auf den Startbildschirm sperren (GLOBAL_ACTION_LOCK_SCREEN). Liest keine Inhalte. In der App erscheint vorher ein Hinweis mit „Zustimmen und Bedienungshilfen öffnen“ / „Ablehnen“. Google verlangt meist ein kurzes Video: Hinweis → Zustimmen → Freigabe → Doppeltipp sperrt.
 - Nutzungszugriff (PACKAGE_USAGE_STATS): nur für die Bildschirmzeit auf dem Gerät, keine Übertragung. Keine Formular-Pflicht, aber in der Beschreibung erwähnen.
 - App-Sichtbarkeit: nur `<queries>` für Startbildschirm-Apps, kein QUERY_ALL_PACKAGES – keine Erklärung nötig.
 

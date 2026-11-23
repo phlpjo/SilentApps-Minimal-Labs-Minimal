@@ -18,7 +18,6 @@ Minimal hat **keine** Internet-Berechtigung und baut keinerlei Verbindung nach a
 | Berechtigung | Wofür | Pflicht? |
 |---|---|---|
 | Apps auflisten (`<queries>`) | damit die App-Liste deine Apps zeigen kann | ja |
-| Bedienungshilfe „Minimal – Doppeltipp sperrt“ | nur zum Sperren per Doppeltipp, liest keine Inhalte | nein, nur nach deiner Zustimmung |
 | Nutzungszugriff (`PACKAGE_USAGE_STATS`) | Bildschirmzeit, nur auf dem Gerät ausgewertet | nein, nur wenn du es erlaubst |
 | `EXPAND_STATUS_BAR` | Wischgeste für Benachrichtigungen | ja |
 | `REQUEST_DELETE_PACKAGES` | „Deinstallieren“ im App-Menü – Android fragt jedes Mal nach | ja |

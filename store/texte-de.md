@@ -26,7 +26,6 @@ Markiere Apps als ablenkend. Vor dem Öffnen erscheint eine kurze Pause mit Atem
 GESTEN
 • Nach unten wischen: Benachrichtigungen (oder eine App deiner Wahl)
 • Nach links oder rechts wischen: frei belegbar
-• Doppeltipp sperrt den Bildschirm (optional, nach deiner Zustimmung)
 
 RUHIGES DESIGN
 Schwarz-weiß, hell oder dunkel nach Systemeinstellung, gut lesbare Schrift, ein langsamer Sternenhimmel im Hintergrund (abschaltbar). Drei Schriften, drei Größen.
@@ -35,8 +34,5 @@ DEINE DATEN BLEIBEN BEI DIR
 • Keine Internet-Berechtigung
 • Kein Konto, keine Werbung, kein Tracking
 • Die Bildschirmzeit wird nur auf dem Gerät berechnet
-
-HINWEIS ZUR BEDIENUNGSHILFE
-Für „Doppeltipp sperrt“ nutzt Minimal die Android-Bedienungshilfen-Schnittstelle. Sie wird ausschließlich zum Sperren des Bildschirms verwendet; Minimal liest damit keine Inhalte. Die Funktion ist optional und erst nach deiner ausdrücklichen Zustimmung aktiv.
 
 Einmal kaufen, für immer ruhiger.

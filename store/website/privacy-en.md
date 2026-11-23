@@ -18,7 +18,6 @@ Minimal has **no** internet permission and never connects to anything outside yo
 | Permission | What for | Required? |
 |---|---|---|
 | List apps (`<queries>`) | so the app list can show your apps | yes |
-| Accessibility service “Minimal – double-tap locks” | only to lock the screen on double-tap, reads no content | no, only after your consent |
 | Usage access (`PACKAGE_USAGE_STATS`) | screen time, evaluated on the device only | no, only if you allow it |
 | `EXPAND_STATUS_BAR` | swipe gesture for notifications | yes |
 | `REQUEST_DELETE_PACKAGES` | “Uninstall” in the app menu – Android asks every time | yes |

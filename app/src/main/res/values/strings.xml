@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Minimal</string>
-    <string name="lock_service_description">Minimal nutzt diese Freigabe nur für eines: Doppeltipp auf den Startbildschirm sperrt das Handy. Es werden keine Inhalte gelesen.</string>
-    <string name="lock_service_label">Minimal – Doppeltipp sperrt</string>
 </resources>
