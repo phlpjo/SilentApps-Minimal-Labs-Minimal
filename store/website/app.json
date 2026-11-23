@@ -1,0 +1,53 @@
+{
+  "slug": "minimal",
+  "name": "Minimal",
+  "package": "de.philipdecker.minimal",
+  "price": 0.99,
+  "category": "Personalisierung",
+  "languages": [
+    "de"
+  ],
+  "status": "soon",
+  "play_url": "https://play.google.com/store/apps/details?id=de.philipdecker.minimal",
+  "developer": "SilentApps Minimal Labs",
+  "contact": "apps@silentapps-minimal-labs.com",
+  "logo": {
+    "black": "logo-schwarz.svg",
+    "white": "logo-weiss.svg",
+    "icon": "icon-512.png"
+  },
+  "privacy": {
+    "de": "privacy-de.md",
+    "en": "privacy-en.md"
+  },
+  "en": {
+    "tagline": "Your phone. Calm. Only what you need.",
+    "short": "A black-and-white home screen that slows down distraction.",
+    "who": "For anyone who wants to unlock their phone less out of habit. Minimal replaces your home screen with the time, the date and your key apps as text – everything else is one gesture away.",
+    "features": [
+      "Home screen with time, date and favourite apps as text",
+      "App list with search and letter bar",
+      "Folders, rename, hide, custom icons",
+      "Slow down distracting apps with a short pause before opening",
+      "Today's screen time, calculated on the device",
+      "Gestures: swipe for notifications, double-tap to lock",
+      "Light/dark follows the system, starfield can be turned off"
+    ],
+    "meta": "Minimalist black-and-white Android launcher: favourite apps as text, slow down distraction, screen time. Offline, no ads."
+  },
+  "de": {
+    "tagline": "Dein Handy. Ruhig. Nur das Nötige.",
+    "short": "Schwarz-weißer Startbildschirm, der Ablenkung bremst.",
+    "who": "Für alle, die ihr Handy seltener aus Gewohnheit entsperren wollen. Minimal ersetzt den Startbildschirm durch Uhr, Datum und deine wichtigsten Apps als Text – alles andere liegt eine Geste entfernt.",
+    "features": [
+      "Startbildschirm mit Uhr, Datum und Lieblings-Apps als Text",
+      "App-Liste mit Suche und Buchstabenleiste",
+      "Ordner, Umbenennen, Ausblenden, eigene Symbole",
+      "Ablenkende Apps bremsen: kurze Pause vor dem Öffnen",
+      "Bildschirmzeit heute, direkt auf dem Gerät berechnet",
+      "Gesten: wischen für Benachrichtigungen, Doppeltipp sperrt",
+      "Hell/Dunkel folgt dem System, Sternenhimmel abschaltbar"
+    ],
+    "meta": "Minimalistischer Android-Launcher in Schwarz-Weiß: Lieblings-Apps als Text, Ablenkung bremsen, Bildschirmzeit. Offline, ohne Werbung."
+  }
+}
