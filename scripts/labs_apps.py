@@ -4,7 +4,7 @@ NOBODY_DE = "nein"
 NOBODY_EN = "no"
 
 APPS = [
- dict(slug="minimal", name="Minimal", repo="labs-Minimal", package="de.philipdecker.minimal", artifact="Minimal",
+ dict(slug="minimal", name="Minimal", repo="labs-Minimal", package="app.minimal", artifact="Minimal",
       price=0.99, category="Personalisierung", languages=["de"], motif="",
       declarations=[
           "Bedienungshilfen (AccessibilityService): App-Inhalte → Bedienungshilfen-API. Zweck: Bildschirm per Doppeltipp auf den Startbildschirm sperren (GLOBAL_ACTION_LOCK_SCREEN). Liest keine Inhalte. "

@@ -1,14 +1,14 @@
 {
   "slug": "minimal",
   "name": "Minimal",
-  "package": "de.philipdecker.minimal",
+  "package": "app.minimal",
   "price": 0.99,
   "category": "Personalisierung",
   "languages": [
     "de"
   ],
   "status": "soon",
-  "play_url": "https://play.google.com/store/apps/details?id=de.philipdecker.minimal",
+  "play_url": "https://play.google.com/store/apps/details?id=app.minimal",
   "developer": "SilentApps Minimal Labs",
   "contact": "apps@silentapps-minimal-labs.com",
   "logo": {

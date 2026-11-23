@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |---|---|
-| Paketname | `de.philipdecker.minimal` |
+| Paketname | `app.minimal` |
 | Entwicklername | SilentApps Minimal Labs |
 | Preis | 0,99 € (einmalig, keine In-App-Käufe, keine Werbung) |
 | Kategorie | Personalisierung |

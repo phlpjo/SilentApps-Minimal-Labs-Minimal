@@ -14,7 +14,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.philipdecker.minimal"
+        applicationId = "app.minimal"
         minSdk = 26
         targetSdk = 36
         versionCode = buildNumber
