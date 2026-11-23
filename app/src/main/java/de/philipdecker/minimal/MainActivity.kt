@@ -155,11 +155,21 @@ class MainActivity : ComponentActivity() {
     private fun applyTheme(c: Configuration) {
         val dark = (c.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
         Palette.dark = dark
-        Lang.de = c.locales[0].language == "de"
+        Lang.de = appLanguage(c) == "de"
         val t = android.graphics.Color.TRANSPARENT
         val bar = if (dark) SystemBarStyle.dark(t) else SystemBarStyle.light(t, t)
         enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE))
+    }
+
+    /** Sprache: eigene App-Sprache (Android 13+, falls gewählt), sonst die erste Systemsprache */
+    private fun appLanguage(c: Configuration): String {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val app = try { getSystemService(android.app.LocaleManager::class.java)?.applicationLocales } catch (_: Exception) { null }
+            if (app != null && !app.isEmpty) return app[0].language
+        }
+        val sys = android.content.res.Resources.getSystem().configuration.locales
+        return if (!sys.isEmpty) sys[0].language else c.locales[0].language
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -175,6 +185,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Lang.de = appLanguage(resources.configuration) == "de"
         tick.intValue++
     }
 
