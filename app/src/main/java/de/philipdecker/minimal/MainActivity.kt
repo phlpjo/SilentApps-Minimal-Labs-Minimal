@@ -115,8 +115,8 @@ class MainActivity : ComponentActivity() {
                             )
                             is Screen.Pause -> PauseScreen(
                                 s.app, prefs.pauseSeconds,
-                                onCancel = { screen.value = Screen.Home },
-                                onOpen = { screen.value = Screen.Home; Apps.launch(this@MainActivity, s.app) },
+                                onCancel = { screen.value = s.from },
+                                onOpen = { screen.value = s.from; Apps.launch(this@MainActivity, s.app) },
                             )
                         }
                     }
@@ -130,9 +130,10 @@ class MainActivity : ComponentActivity() {
     /** Ablenkende Apps erst nach der Pause, alle anderen sofort */
     private fun open(app: AppEntry) {
         if (app.pkg in prefs.distracting && prefs.pauseSeconds > 0) {
-            screen.value = Screen.Pause(app)
+            screen.value = Screen.Pause(app, if (screen.value is Screen.Folder) screen.value else Screen.Home)
         } else {
-            screen.value = Screen.Home
+            // aus einem Ordner gestartet: Ordner bleibt offen, wenn man zurückkommt
+            if (screen.value !is Screen.Folder) screen.value = Screen.Home
             Apps.launch(this, app)
         }
     }
@@ -180,18 +181,25 @@ class MainActivity : ComponentActivity() {
     // Home-Taste, während der Launcher offen ist → zurück zum Startbildschirm
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == Intent.ACTION_MAIN) screen.value = Screen.Home
+        // Home-Taste im Launcher → Startbildschirm; Rückkehr aus einer App, die aus einem Ordner kam → Ordner bleibt
+        if (intent.action == Intent.ACTION_MAIN && !(returning && screen.value is Screen.Folder)) screen.value = Screen.Home
+        returning = false
     }
+
+    /** true, solange der Launcher verdeckt ist (eine App läuft) */
+    private var returning = false
 
     override fun onResume() {
         super.onResume()
         Lang.de = appLanguage(resources.configuration) == "de"
         tick.intValue++
+        returning = false
     }
 
     override fun onStop() {
         super.onStop()
-        if (screen.value is Screen.Pause) screen.value = Screen.Home
+        returning = true
+        (screen.value as? Screen.Pause)?.let { screen.value = it.from }
     }
 
     override fun onDestroy() {

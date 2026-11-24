@@ -111,6 +111,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.animation.core.animateFloatAsState
 
 /**
  * Farben folgen dem System (hell/dunkel). Kontraste nach WCAG 2.2 gegen den Hintergrund:
@@ -131,7 +132,7 @@ sealed interface Screen {
     data object Home : Screen
     data object Apps : Screen
     data object Settings : Screen
-    data class Pause(val app: AppEntry) : Screen
+    data class Pause(val app: AppEntry, val from: Screen = Home) : Screen
     data class Folder(val id: String) : Screen
 }
 
@@ -240,6 +241,18 @@ fun HomeScreen(
     var editFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
     var renameFolder by remember { mutableStateOf<de.philipdecker.minimal.Folder?>(null) }
     var folderIcon by remember { mutableStateOf<String?>(null) }
+    // Alphabet am rechten Rand: Buchstabe unter dem Finger und die Apps dazu
+    var edgeActive by remember { mutableStateOf(false) }
+    var edgePos by remember { mutableFloatStateOf(0f) }
+    var browsing by remember { mutableStateOf<Char?>(null) }
+    var browseTouch by remember { mutableIntStateOf(0) }
+    val visibleApps = remember(apps, prefs.hidden) { apps.filter { it.key !in prefs.hidden } }
+    val byLetter = remember(visibleApps) { visibleApps.groupBy { letterOf(it.label) } }
+    LaunchedEffect(browsing, browseTouch, edgeActive) {
+        if (browsing != null && !edgeActive) { delay(12_000); browsing = null }
+    }
+    androidx.activity.compose.BackHandler(enabled = browsing != null) { browsing = null }
+    val openApp: (AppEntry) -> Unit = { browsing = null; onOpen(it) }
 
     Box(
         Modifier
@@ -263,10 +276,14 @@ fun HomeScreen(
                     warp.floatValue = (warp.floatValue - d.y * 0.6f).coerceIn(-90f, 90f)
                 }
             }
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onSettings() }) }
+            .pointerInput(Unit) { detectTapGestures(onTap = { browsing = null }, onLongPress = { onSettings() }) },
+    ) {
+      Box(
+        Modifier
+            .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = 32.dp, vertical = 24.dp),
-    ) {
+      ) {
         Column(Modifier.fillMaxSize()) {
             Spacer(Modifier.height(28.dp))
             T(now.format(timeFmt), size = 84.sp, weight = FontWeight.Light, glow = true, spacing = (-2).sp,
@@ -282,6 +299,26 @@ fun HomeScreen(
                 T(info.joinToString("   ·   "), size = 13.sp, color = Faint, spacing = 1.2.sp, modifier = Modifier.floatIn(2))
             }
 
+            val letter = browsing
+            if (letter != null) {
+                Spacer(Modifier.height(28.dp))
+                T(letter.toString(), size = 56.sp, weight = FontWeight.Light, glow = true)
+                Spacer(Modifier.height(8.dp))
+                val list = byLetter[letter].orEmpty()
+                Column(
+                    Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(end = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    if (list.isEmpty()) T(tr("Keine Apps mit $letter", "No apps starting with $letter"), size = 16.sp, color = Dim)
+                    list.forEachIndexed { i, app ->
+                        Labeled(
+                            app.label, prefs.iconFor(app.key), size = 28.sp, weight = FontWeight.Light,
+                            color = if (app.pkg in prefs.distracting) Dim else Ink,
+                            modifier = Modifier.floatIn(i.coerceAtMost(8)).tap { openApp(app) },
+                        )
+                    }
+                }
+            } else {
             Spacer(Modifier.weight(1f))
             if (favs.isEmpty()) {
                 T(tr("Nach oben wischen für alle Apps.\nLange auf eine App drücken, um sie hier anzuheften.", "Swipe up for all apps.\nLong-press an app to pin it here."), size = 16.sp, color = Dim, modifier = Modifier.floatIn(3))
@@ -292,7 +329,7 @@ fun HomeScreen(
                             is HomeItem.App -> Labeled(
                                 item.app.label, prefs.iconFor(item.app.key), size = 32.sp, weight = FontWeight.Light,
                                 color = if (item.app.pkg in prefs.distracting) Dim else Ink,
-                                modifier = Modifier.floatIn(3 + i).tap { onOpen(item.app) },
+                                modifier = Modifier.floatIn(3 + i).tap { openApp(item.app) },
                             )
                             // Ordner: nur der Name als Text
                             is HomeItem.Dir -> Labeled(
@@ -304,8 +341,19 @@ fun HomeScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
+            }
             SwipeHint(Modifier.align(Alignment.CenterHorizontally).tap { onApps() })
         }
+      }
+        EdgeAlphabet(
+            present = byLetter.keys,
+            active = edgeActive,
+            pos = edgePos,
+            modifier = Modifier.align(Alignment.CenterEnd),
+            onStart = { edgeActive = true },
+            onMove = { p, l -> edgePos = p; if (browsing != l) browsing = l },
+            onEnd = { edgeActive = false; browseTouch++ },
+        )
     }
 
     editFolder?.let { f ->
@@ -725,6 +773,89 @@ fun LetterBar(index: List<Pair<Char, Int>>, modifier: Modifier = Modifier, onJum
                 T(l.toString(), size = 11.sp, weight = FontWeight.Medium, color = if (l == active) Ink else if (l in present) Dim else Faint)
             }
         }
+    }
+}
+
+/** Buchstaben am rechten Rand des Startbildschirms: # und A–Z */
+val EDGE_LETTERS: List<Char> = listOf('#') + ('A'..'Z')
+
+/**
+ * Unsichtbare Leiste am rechten Rand. Senkrecht darüber wischen zeigt das Alphabet mit
+ * Lupen-Effekt (Buchstaben nahe am Finger wachsen und rücken nach innen) und meldet den
+ * Buchstaben unter dem Finger. Waagrechte Wischer bleiben für die normalen Gesten frei.
+ */
+@Composable
+fun EdgeAlphabet(
+    present: Set<Char>, active: Boolean, pos: Float, modifier: Modifier = Modifier,
+    onStart: () -> Unit, onMove: (Float, Char) -> Unit, onEnd: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val show by animateFloatAsState(if (active) 1f else 0f, tween(if (active) 160 else 420), label = "edge")
+    BoxWithConstraints(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.systemBars).padding(vertical = 56.dp)) {
+        val h = constraints.maxHeight.toFloat()
+        val n = EDGE_LETTERS.size
+        // sichtbares Alphabet (nimmt keine Berührungen an)
+        if (show > 0.01f) {
+            Box(Modifier.align(Alignment.CenterEnd).width(140.dp).fillMaxHeight().graphicsLayer { alpha = show }) {
+                EDGE_LETTERS.forEachIndexed { i, l ->
+                    val d = abs(i - pos)
+                    val f = (1f - d / 4.5f).coerceIn(0f, 1f)
+                    val ease = f * f * (3 - 2 * f)
+                    val y = (i + 0.5f) / n * h
+                    T(
+                        l.toString(), size = 13.sp, weight = FontWeight.Medium,
+                        color = if (l in present) Ink else Faint,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .graphicsLayer {
+                                val sc = 1f + 1.6f * ease
+                                scaleX = sc; scaleY = sc
+                                translationX = -(14.dp.toPx() + 56.dp.toPx() * ease)
+                                translationY = y - 9.dp.toPx()
+                                alpha = if (l in present) 0.55f + 0.45f * ease else 0.45f
+                            },
+                    )
+                }
+            }
+        }
+        // Greiffläche am Rand
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .width(30.dp)
+                .fillMaxHeight()
+                .pointerInput(present) {
+                    val slop = viewConfiguration.touchSlop * 0.6f
+                    var last: Char? = null
+                    fun at(y: Float): Pair<Float, Char> {
+                        val p = (y / size.height * n - 0.5f).coerceIn(0f, n - 1f)
+                        return p to EDGE_LETTERS[(p + 0.5f).toInt().coerceIn(0, n - 1)]
+                    }
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var claimed = false
+                        var acc = Offset.Zero
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!c.pressed) break
+                            acc += c.position - c.previousPosition
+                            if (!claimed) {
+                                if (abs(acc.y) > slop && abs(acc.y) >= abs(acc.x)) {
+                                    claimed = true; last = null; onStart()
+                                } else if (abs(acc.x) > slop) break
+                            }
+                            if (claimed) {
+                                c.consume()
+                                val (p, l) = at(c.position.y)
+                                if (l != last) { last = l; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                onMove(p, l)
+                            }
+                        }
+                        if (claimed) onEnd()
+                    }
+                },
+        )
     }
 }
 
